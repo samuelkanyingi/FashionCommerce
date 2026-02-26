@@ -1,5 +1,6 @@
 import os
 import dj_database_url
+from decouple import config
 
 """
 Django settings for fashion_project project.
@@ -29,9 +30,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
 DEBUG = True
 
 # Google Maps API Key
-GOOGLE_MAPS_API_KEY = os.environ.get(
-    "GOOGLE_MAPS_API_KEY", "AIzaSyBIrQMV2-r-LXtjElPd86iS8Pj78MSRtYg"
-)
+GOOGLE_MAPS_API_KEY = config("GOOGLE_MAPS_API_KEY")
 
 
 # ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.ngrok-free.app', '.ngrok.io', 'pluckiest-lore-presanguine.ngrok-free.dev']
