@@ -83,25 +83,17 @@ WSGI_APPLICATION = "fashion_project.wsgi.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'fashionhub',
-#         'USER': 'postgres',
-#         'PASSWORD': 'xmlink254',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-
-#     }
-# }
-DATABASES = {
-    "default": dj_database_url.config(
-        default=f"postgres://postgres:xmlink254@localhost:5432/fashionhub",
-        conn_max_age=0,
-    )
-}
+if DATABASE_URL:
+    DATABASES = {"default": dj_database_url.config(conn_max_age=600)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
