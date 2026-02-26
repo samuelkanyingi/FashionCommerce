@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 # Google Maps API Key
 GOOGLE_MAPS_API_KEY = config("GOOGLE_MAPS_API_KEY")
@@ -100,7 +100,7 @@ WSGI_APPLICATION = "fashion_project.wsgi.application"
 DATABASES = {
     "default": dj_database_url.config(
         default=f"postgres://postgres:xmlink254@localhost:5432/fashionhub",
-        conn_max_age=600,
+        conn_max_age=0,
     )
 }
 
