@@ -1,0 +1,19 @@
+<header style="background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 15px 20px; margin-bottom: 30px;">
+  <nav style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <a href="{% url 'index' %}" style="font-size: 1.5rem; font-weight: 700; color: #04aa6d; text-decoration: none;">FashionHub</a>
+      <a href="{% url 'women' %}" style="color: #333; text-decoration: none;">Women</a>
+      <a href="{% url 'men' %}" style="color: #333; text-decoration: none;">Men</a>
+      <a href="{% url 'cart' %}" style="color: #333; text-decoration: none;">Cart ({{ cart|length }})</a>
+      <a href="{% url 'reports' %}" style="color: #333; text-decoration: none;">Reports</a>
+    </div>
+    <div>
+      {% if user.is_authenticated %}
+        <span>Welcome, {{ user.username }}</span>
+        <a href="{% url 'logout' %}" style="color: #04aa6d; margin-left: 10px;">Logout</a>
+      {% else %}
+        <a href="{% url 'login' %}" style="color: #04aa6d;">Login</a>
+      {% endif %}
+    </div>
+  </nav>
+</header>

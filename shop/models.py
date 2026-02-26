@@ -1,0 +1,187 @@
+from django.db import models
+from django.contrib.auth.models import User
+import uuid
+
+
+DELIVERY_ZONES = {
+    "nairobi": {
+        "cbd": 100,
+        "westlands": 200,
+        "karen": 350,
+        "rongai": 300,
+        "eastleigh": 150,
+        "kilimani": 180,
+        "lavington": 220,
+        "kileleshwa": 200,
+        "parklands": 180,
+        "south_b": 200,
+        "south_c": 220,
+        "embakasi": 280,
+        "langata": 250,
+        "muthaiga": 300,
+        "gigiri": 320,
+        "ruaka": 350,
+        "kiambu_road": 300,
+        "thika_road": 280,
+        "jogoo_road": 200,
+    },
+    "mombasa": {
+        "cbd": 150,
+        "nyali": 250,
+        "bamburi": 280,
+        "likoni": 300,
+        "mtwapa": 350,
+        "diani": 400,
+        "malindi": 500,
+        "changamwe": 200,
+    },
+    "kisumu": {
+        "cbd": 150,
+        "milimani": 180,
+        "nyalenda": 150,
+        "mamboleo": 170,
+        "kondele": 150,
+        "airport": 250,
+    },
+    "nakuru": {
+        "cbd": 150,
+        "lanet": 200,
+        "lanet_maw": 180,
+        "free_area": 170,
+    },
+    "eldoret": {
+        "cbd": 150,
+        "langeoni": 180,
+        "west": 170,
+    },
+}
+
+
+def calculate_delivery_fee(location_str):
+    """Calculate delivery fee based on location string from OpenStreetMap"""
+    if not location_str:
+        return 300  # Default fee
+
+    location_lower = location_str.lower()
+
+    for city, areas in DELIVERY_ZONES.items():
+        if city in location_lower:
+            for area, fee in areas.items():
+                if area.replace("_", " ") in location_lower or area in location_lower:
+                    return fee
+            return list(areas.values())[0]  # Return default for city
+
+    return 350  # Default for unknown locations
+
+
+class Product(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    price = models.IntegerField()
+    image = models.ImageField(upload_to="products/")
+    category = models.CharField(
+        max_length=50,
+        choices=[
+            ("women", "Women"),
+            ("men", "Men"),
+        ],
+        default="men",
+    )
+    subcategory = models.CharField(max_length=50)
+    stock = models.IntegerField(default=0)
+
+    def __str__(self):
+        return self.name
+
+
+class Order(models.Model):
+    delivery_fee = models.IntegerField(default=0)
+    address = models.CharField(max_length=255, null=True, blank=True)
+    landmark = models.CharField(max_length=200, null=True, blank=True)
+    id = models.AutoField(primary_key=True)
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders")
+    phone = models.CharField(max_length=15, null=True, blank=True)
+    email = models.EmailField(null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    location = models.CharField(max_length=200, null=True, blank=True)
+    mpesa_receipt = models.CharField(max_length=50, blank=True, null=True)
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("PAID", "Paid"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    tracking_number = models.CharField(max_length=20, unique=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.tracking_number:
+            self.tracking_number = str(uuid.uuid4()).split("-")[0].upper()
+        if self.location and self.delivery_fee == 0:
+            self.delivery_fee = calculate_delivery_fee(self.location)
+        super().save(*args, **kwargs)
+
+    def get_total_amount(self):
+        """Calculate total from OrderItems (3NF compliant)"""
+        return sum(item.get_total() for item in self.items.all())
+
+    def get_grand_total(self):
+        """Total including delivery fee"""
+        return self.get_total_amount() + (self.delivery_fee or 0)
+
+    def __str__(self):
+        return f"Order {self.tracking_number} - {self.buyer.username}"
+
+
+class OrderItem(models.Model):
+    id = models.AutoField(primary_key=True)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.IntegerField()
+    price = models.IntegerField()
+    size = models.CharField(max_length=20, blank=True)
+
+    def __str__(self):
+        size_info = f" - Size {self.size}" if self.size else ""
+        return f"{self.quantity}x {self.product.name}{size_info} - Order {self.order.tracking_number}"
+
+    def get_total(self):
+        return self.quantity * self.price
+
+
+class Receipt(models.Model):
+    id = models.AutoField(primary_key=True)
+    order = models.OneToOneField(
+        Order, on_delete=models.CASCADE, related_name="platform_receipt"
+    )
+    receipt_number = models.CharField(max_length=50, unique=True, blank=True)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    pdf_file = models.BinaryField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.receipt_number:
+            self.receipt_number = f"RCP-{self.order.tracking_number}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Receipt {self.receipt_number}"
+
+
+class Report(models.Model):
+    REPORT_TYPES = [
+        ("sales", "Sales Report"),
+        ("inventory", "Inventory Report"),
+        ("orders", "Orders Report"),
+        ("customers", "Customer Report"),
+        ("products", "Product Report"),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    report_type = models.CharField(max_length=20, choices=REPORT_TYPES)
+    title = models.CharField(max_length=100)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    data = models.JSONField(default=dict)
+
+    def __str__(self):
+        return f"{self.get_report_type_display()} - {self.generated_at.strftime('%Y-%m-%d')}"

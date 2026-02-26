@@ -1,0 +1,46 @@
+# Python
+*.pyc
+*.pyo
+__pycache__/
+
+# Environment Variables
+.env
+.env.example
+
+# Virtual Environment
+venv/
+
+# Database
+db.sqlite3
+
+# Django Static and Media Files
+staticfiles/
+media/
+
+# IDE/Editor Files
+.vscode/
+.idea/
+
+# System Files
+Thumbs.db
+.DS_Store
+
+# Build and Deployment Files
+*.log
+*.pot
+*.mo
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Node.js
+node_modules/
+npm-debug.log
+
+# Compiled Files
+*.out
+*.o
+
+# Specific Issue
+nul

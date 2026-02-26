@@ -1,0 +1,77 @@
+{% for product in products %}
+<div class="product-card-modern">
+    <div class="product-image-wrapper">
+        {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+        {% endif %}
+        <div class="product-overlay">
+            <button class="wishlist-btn" title="Add to Wishlist">
+                <i class="fa fa-heart"></i>
+            </button>
+        </div>
+        {% if forloop.counter <= 3 %}
+        <span class="product-badge new">New</span>
+        {% elif product.price < 3000 %}
+        <span class="product-badge sale">Sale</span>
+        {% endif %}
+    </div>
+    <div class="product-info">
+        <h3 class="product-title">{{ product.name }}</h3>
+        <div class="product-rating">
+            <i class="fa fa-star"></i>
+            <i class="fa fa-star"></i>
+            <i class="fa fa-star"></i>
+            <i class="fa fa-star"></i>
+            <i class="fa fa-star-half-o"></i>
+            <span>(4.5)</span>
+        </div>
+        <div class="product-price">
+            <span class="current-price">KES {{ product.price }}</span>
+            <span class="original-price">KES {{ product.price|add:500 }}</span>
+        </div>
+        <form hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML" 
+              hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+              class="add-to-cart-form">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <select name="size" class="size-select">
+                <option value="">Size</option>
+                {% if product.subcategory == 'shoes' %}
+                    {% if product.category == 'women' %}
+                        <option value="35">35</option>
+                        <option value="36">36</option>
+                        <option value="37">37</option>
+                        <option value="38">38</option>
+                        <option value="39">39</option>
+                        <option value="40">40</option>
+                    {% else %}
+                        <option value="38">38</option>
+                        <option value="39">39</option>
+                        <option value="40">40</option>
+                        <option value="41">41</option>
+                        <option value="42">42</option>
+                        <option value="43">43</option>
+                        <option value="44">44</option>
+                    {% endif %}
+                {% else %}
+                    {% if product.category == 'women' %}
+                        <option value="XS">XS</option>
+                    {% endif %}
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                {% endif %}
+            </select>
+            <button type="submit" class="add-cart-btn">
+                <i class="fa fa-shopping-cart"></i> Add to Cart
+            </button>
+        </form>
+    </div>
+</div>
+{% empty %}
+<div class="no-products">
+    <i class="fa fa-shopping-bag"></i>
+    <h3>No products found</h3>
+    <p>Try selecting a different category</p>
+</div>
+{% endfor %}

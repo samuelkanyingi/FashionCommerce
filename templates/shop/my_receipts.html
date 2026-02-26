@@ -1,0 +1,135 @@
+{% extends 'shop/base.html' %} {% block content %}
+<div
+  class="receipt-list"
+  style="max-width: 900px; margin: 0 auto; padding: 40px 0"
+>
+  <h2
+    style="
+      color: #04aa6d;
+      text-align: center;
+      margin-bottom: 32px;
+      font-size: 2.2rem;
+      letter-spacing: 1px;
+    "
+  >
+    My Receipts
+  </h2>
+  {% if orders %}
+  <div style="overflow-x: auto">
+    <table
+      style="
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+        background: transparent;
+      "
+    >
+      <thead>
+        <tr style="background: #f5f5f5">
+          <th
+            style="
+              padding: 14px 10px;
+              text-align: left;
+              font-size: 1.1rem;
+              color: #333;
+              border-radius: 8px 0 0 8px;
+            "
+          >
+            Order #
+          </th>
+          <th
+            style="
+              padding: 14px 10px;
+              text-align: left;
+              font-size: 1.1rem;
+              color: #333;
+            "
+          >
+            Total
+          </th>
+          <th
+            style="
+              padding: 14px 10px;
+              text-align: left;
+              font-size: 1.1rem;
+              color: #333;
+            "
+          >
+            Receipt
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr
+          style="
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            border-radius: 8px;
+          "
+        >
+          <td
+            style="
+              padding: 18px 10px;
+              font-weight: 600;
+              color: #222;
+              vertical-align: middle;
+              border-radius: 8px 0 0 8px;
+            "
+          >
+            {{ order.tracking_number }}
+          </td>
+          <td
+            style="
+              padding: 18px 10px;
+              color: #04aa6d;
+              font-size: 1.1rem;
+              vertical-align: middle;
+            "
+          >
+            KES {{ order.get_total_amount }}
+          </td>
+          <td style="padding: 18px 10px; vertical-align: middle">
+            <a
+              href="{% url 'receipt' order.id %}"
+              class="print-btn"
+              style="
+                background: #04aa6d;
+                color: white;
+                padding: 8px 22px;
+                border-radius: 5px;
+                text-decoration: none;
+                font-weight: 500;
+              "
+              >View</a
+            >
+            <a
+              href="{% url 'download_receipt_pdf' order.id %}"
+              class="print-btn"
+              style="
+                background: #333;
+                color: white;
+                padding: 8px 22px;
+                border-radius: 5px;
+                text-decoration: none;
+                margin-left: 10px;
+                font-weight: 500;
+              "
+              >PDF</a
+            >
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align: center; margin-top: 40px">
+    <i class="fa fa-file-text-o" style="font-size: 3rem; color: #ccc"></i>
+    <p style="color: #888; font-size: 1.2rem; margin-top: 10px">
+      You have no paid receipts yet.
+    </p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

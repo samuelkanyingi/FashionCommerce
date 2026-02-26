@@ -1,0 +1,981 @@
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from django.db import models
+from django.conf import settings
+from .models import Product, Order, OrderItem, Receipt, Report, calculate_delivery_fee
+from .utils.mpesa import get_mpesa_access_token
+from django.template.loader import render_to_string
+from io import BytesIO
+import datetime
+import base64
+import requests
+import json
+from django.views.decorators.http import require_POST
+
+
+def generate_receipt_pdf(order):
+    """Generate PDF receipt for an order"""
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        from reportlab.platypus import (
+            SimpleDocTemplate,
+            Table,
+            TableStyle,
+            Paragraph,
+            Spacer,
+        )
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = []
+        styles = getSampleStyleSheet()
+
+        # Title
+        title_style = ParagraphStyle(
+            "CustomTitle",
+            parent=styles["Heading1"],
+            fontSize=24,
+            textColor=colors.HexColor("#04AA6D"),
+            alignment=1,  # Center
+        )
+        elements.append(Paragraph("FASHIONHUB", title_style))
+        elements.append(Paragraph("Payment Receipt", styles["Heading2"]))
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Receipt Information
+        receipt_info = [
+            ["Receipt Number:", order.mpesa_receipt or "N/A"],
+            ["Order Number:", order.tracking_number],
+            ["Payment Date:", datetime.datetime.now().strftime("%B %d, %Y - %I:%M %p")],
+            ["Payment Status:", order.status],
+        ]
+        receipt_table = Table(receipt_info, colWidths=[2 * inch, 4 * inch])
+        receipt_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        elements.append(receipt_table)
+        elements.append(Spacer(1, 0.2 * inch))
+
+        # Customer Information
+        elements.append(Paragraph("Customer Information", styles["Heading3"]))
+        customer_info = [
+            ["Name:", order.buyer.username],
+            ["Email:", order.email or order.buyer.email],
+            ["Phone:", order.phone or "N/A"],
+            ["City:", order.city or "N/A"],
+            ["Location:", order.location or "N/A"],
+        ]
+        customer_table = Table(customer_info, colWidths=[2 * inch, 4 * inch])
+        customer_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ]
+            )
+        )
+        elements.append(customer_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Order Items
+        elements.append(Paragraph("Order Items", styles["Heading3"]))
+        items_data = [["Item", "Size", "Qty", "Price", "Total"]]
+
+        for item in order.items.all():
+            items_data.append(
+                [
+                    item.product.name,
+                    item.size or "N/A",
+                    str(item.quantity),
+                    f"KES {item.price}",
+                    f"KES {item.get_total()}",
+                ]
+            )
+
+        items_table = Table(
+            items_data, colWidths=[2.5 * inch, 1 * inch, 0.7 * inch, 1 * inch, 1 * inch]
+        )
+        items_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8f8f8")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                    ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ]
+            )
+        )
+        elements.append(items_table)
+        elements.append(Spacer(1, 0.2 * inch))
+
+        # Total
+        total_data = [["Total Paid:", f"KES {order.get_total_amount()}"]]
+        total_table = Table(total_data, colWidths=[5.2 * inch, 1 * inch])
+        total_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 14),
+                    ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+                    ("TEXTCOLOR", (1, 0), (1, 0), colors.HexColor("#04AA6D")),
+                    ("LINEABOVE", (0, 0), (-1, 0), 2, colors.HexColor("#04AA6D")),
+                    ("TOPPADDING", (0, 0), (-1, -1), 12),
+                ]
+            )
+        )
+        elements.append(total_table)
+        elements.append(Spacer(1, 0.4 * inch))
+
+        # Footer
+        footer_text = """
+        <para align=center>
+        <b>Thank you for shopping with FashionHub!</b><br/>
+        Your order will be delivered within 1-2 days.<br/>
+        <br/>
+        © 2026 FashionHub. All rights reserved.
+        </para>
+        """
+        elements.append(Paragraph(footer_text, styles["Normal"]))
+
+        doc.build(elements)
+        buffer.seek(0)
+        return buffer
+
+    except ImportError:
+        print("reportlab not installed. Install with: pip install reportlab")
+        return None
+    except Exception as e:
+        print(f"PDF generation error: {e}")
+        return None
+
+
+def search(request):
+    try:
+        cart = request.session.get("cart", [])
+        if not isinstance(cart, list):
+            cart = []
+            request.session["cart"] = cart
+    except:
+        cart = []
+        request.session["cart"] = cart
+
+    query = request.GET.get("q", "")
+    products = (
+        Product.objects.filter(name__icontains=query)
+        if query
+        else Product.objects.none()
+    )
+
+    return render(
+        request,
+        "shop/search.html",
+        {
+            "cart": cart,
+            "products": products,
+            "query": query,
+        },
+    )
+
+
+def index(request):
+    try:
+        cart = request.session.get("cart", [])
+        if not isinstance(cart, list):
+            cart = []
+            request.session["cart"] = cart
+    except:
+        cart = []
+        request.session["cart"] = cart
+    return render(request, "shop/index.html", {"cart": cart})
+
+
+def register(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        confirm_password = request.POST.get("confirm_password")
+
+        print("Username:", username)
+        print("Email:", email)
+        print("Password:", password)
+        print("Confirm Password:", confirm_password)
+        print(username)
+
+        if password != confirm_password:
+            return HttpResponse(
+                '<div style="color: red; margin-bottom: 10px"> Passwords do not match</div>'
+            )
+
+        if User.objects.filter(username=username).exists():
+            return HttpResponse(
+                '<div style="color: red; margin-bottom: 10px"> Username already taken</div>'
+            )
+        User.objects.create_user(username=username, email=email, password=password)
+
+        response = HttpResponse("redirect... ")
+        response["HX-Redirect"] = "/login"
+        return response
+    return render(request, "shop/register.html")
+
+
+def login_user(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+
+        # Check if username exists
+        try:
+            User.objects.get(username=username)
+            # Username exists, now check password
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                next_url = request.GET.get("next", "index")
+                response = HttpResponse("")
+
+                if "/" not in next_url:
+                    response["HX-Redirect"] = reverse(next_url)
+                else:
+                    response["HX-Redirect"] = next_url
+                return response
+            else:
+                return HttpResponse(
+                    '<div style="color:red; padding-bottom: 20px;">Invalid password</div>'
+                )
+        except User.DoesNotExist:
+            return HttpResponse(
+                '<div style="color:red; padding-bottom: 20px;">Invalid username</div>'
+            )
+
+    return render(request, "shop/login.html")
+
+
+def women(request):
+    try:
+        cart = request.session.get("cart", [])
+        if not isinstance(cart, list):
+            cart = []
+            request.session["cart"] = cart
+    except:
+        cart = []
+        request.session["cart"] = cart
+
+    sort = request.GET.get("sort")
+    subcategory = request.GET.get("sub")
+    min_price = request.GET.get("min_price")
+    max_price = request.GET.get("max_price")
+
+    products = Product.objects.filter(category__iexact="women")
+    if subcategory:
+        products = products.filter(subcategory__iexact=subcategory)
+
+    if min_price:
+        products = products.filter(price__gte=int(min_price))
+    if max_price:
+        products = products.filter(price__lte=int(max_price))
+
+    if sort == "low-to-high":
+        products = products.order_by("price")
+    elif sort == "high-to-low":
+        products = products.order_by("-price")
+
+    is_htmx = request.headers.get("HX-Request") == "true"
+    template = "shop/product_grid.html" if is_htmx else "shop/women.html"
+
+    return render(
+        request,
+        template,
+        {
+            "cart": cart,
+            "products": products,
+            "subcategories": ["clothing", "shoes", "handbags"],
+            "subcategory": subcategory,
+            "min_price": min_price,
+            "max_price": max_price,
+            "gender": "women",
+        },
+    )
+
+
+# @login_required(login_url="login")
+def men(request):
+    try:
+        cart = request.session.get("cart", [])
+        if not isinstance(cart, list):
+            cart = []
+            request.session["cart"] = cart
+    except:
+        cart = []
+        request.session["cart"] = cart
+
+    sort = request.GET.get("sort")
+    subcategory = request.GET.get("sub")
+    min_price = request.GET.get("min_price")
+    max_price = request.GET.get("max_price")
+
+    products = Product.objects.filter(category__iexact="men")
+    if subcategory:
+        products = products.filter(subcategory__iexact=subcategory)
+
+    if min_price:
+        products = products.filter(price__gte=int(min_price))
+    if max_price:
+        products = products.filter(price__lte=int(max_price))
+
+    if sort == "low-to-high":
+        products = products.order_by("price")
+    elif sort == "high-to-low":
+        products = products.order_by("-price")
+
+    is_htmx = request.headers.get("HX-Request") == "true"
+    template = "shop/product_grid.html" if is_htmx else "shop/men.html"
+
+    return render(
+        request,
+        template,
+        {
+            "cart": cart,
+            "products": products,
+            "subcategories": ["clothing", "shoes", "watches"],
+            "subcategory": subcategory,
+            "min_price": min_price,
+            "max_price": max_price,
+            "gender": "men",
+        },
+    )
+
+
+def add_to_cart(request):
+    if request.method == "POST":
+        cart = request.session.get("cart", [])
+
+        product_id = request.POST.get("product_id")
+        size = request.POST.get("size", "")
+
+        if product_id:
+            try:
+                product = Product.objects.get(id=product_id)
+                item = {
+                    "name": product.name,
+                    "price": int(product.price),
+                    "image": product.image.url if product.image else "",
+                    "quantity": 1,
+                    "size": size,
+                    "description": product.description,
+                }
+            except Product.DoesNotExist:
+                return HttpResponse("Product not found", status=404)
+        else:
+            item = {
+                "name": request.POST.get("name"),
+                "price": int(request.POST.get("price", 0)),
+                "image": request.POST.get("image"),
+                "quantity": 1,
+                "size": size,
+            }
+
+        cart.append(item)
+        request.session["cart"] = cart
+
+        return HttpResponse(f'''
+            <a href="{reverse("cart")}" id="cart-icon" style="position: relative; display: inline-block; font-size: 20px;">
+                <i class="fa fa-shopping-cart"></i>
+                <span style="position: absolute; top: -8px; right: -8px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; font-weight: bold;">{len(cart)}</span>
+            </a>
+        ''')
+
+
+def cart(request):
+    cart_items = request.session.get("cart", [])
+
+    for item in cart_items:
+        item["total_price"] = item["price"] * item.get("quantity", 1)
+
+    total = sum(item["total_price"] for item in cart_items)
+
+    order = None
+    if request.user.is_authenticated:
+        order, created = Order.objects.get_or_create(
+            buyer=request.user, status="PENDING", defaults={"delivery_fee": 0}
+        )
+        if cart_items:
+            order.items.all().delete()
+            for item in cart_items:
+                try:
+                    product = Product.objects.get(name=item["name"])
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=item.get("quantity", 1),
+                        price=item["price"],
+                        size=item.get("size", ""),
+                    )
+                except Product.DoesNotExist:
+                    print(f"Product not found: {item['name']}")
+
+        # Calculate delivery fee from location
+        location = request.POST.get("location") or order.location
+        if location:
+            order.delivery_fee = calculate_delivery_fee(location)
+            order.save()
+
+    return render(
+        request, "shop/cart.html", {"cart": cart_items, "total": total, "order": order}
+    )
+
+
+def update_cart(request):
+    if request.method == "POST":
+        cart = request.session.get("cart", [])
+        action = request.POST.get("action")
+        name = request.POST.get("name")
+
+        for item in cart:
+            if item["name"] == name:
+                if "quantity" not in item:
+                    item["quantity"] = 1
+                if action == "increase":
+                    item["quantity"] += 1
+                elif action == "decrease" and item["quantity"] > 1:
+                    item["quantity"] -= 1
+                break
+        request.session["cart"] = cart
+        total = sum(i["price"] * i.get("quantity", 1) for i in cart)
+
+        order = None
+        if request.user.is_authenticated:
+            order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+
+        return render(
+            request,
+            "shop/cart_items.html",
+            {"cart": cart, "total": total, "order": order},
+        )
+
+
+def remove_item(request):
+    if request.method == "POST":
+        cart = request.session.get("cart", [])
+        name = request.POST.get("name")
+
+        cart = [item for item in cart if item["name"] != name]
+        request.session["cart"] = cart
+
+        if not cart and request.user.is_authenticated:
+            Order.objects.filter(buyer=request.user, status="PENDING").delete()
+
+        total = sum(i["price"] * i.get("quantity", 1) for i in cart)
+
+        order = None
+        if request.user.is_authenticated:
+            order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+
+        return render(
+            request,
+            "shop/cart_items.html",
+            {"cart": cart, "total": total, "order": order},
+        )
+
+
+# @login_required(login_url="login")
+def stk_push(request, order_id):
+    order = Order.objects.get(id=order_id)
+
+    email = request.POST.get("email")
+    location = request.POST.get("location")
+    address = request.POST.get("address")
+    landmark = request.POST.get("landmark")
+    phone_input = request.POST.get("phone")
+
+    if phone_input:
+        order.phone = phone_input
+    if email:
+        order.email = email
+    if location:
+        order.location = location
+        order.delivery_fee = calculate_delivery_fee(location)
+    if address:
+        order.address = address
+    if landmark:
+        order.landmark = landmark
+
+    order.save()
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    password = base64.b64encode(
+        f"{settings.MPESA_SHORTCODE}{settings.MPESA_PASSKEY}{timestamp}".encode()
+    ).decode()
+
+    access_token = get_mpesa_access_token()
+
+    if not order.phone:
+        return JsonResponse({"error": "Phone number is required"}, status=400)
+
+    phone = order.phone.strip()
+
+    phone = phone.replace("+", "").replace(" ", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "254" + phone[1:]
+    elif phone.startswith("7") or phone.startswith("1"):
+        phone = "254" + phone
+
+    order_total = order.get_grand_total()
+
+    payload = {
+        "BusinessShortCode": settings.MPESA_SHORTCODE,
+        "Password": password,
+        "Timestamp": timestamp,
+        "TransactionType": "CustomerPayBillOnline",
+        "Amount": order_total,
+        "PartyA": phone,
+        "PartyB": settings.MPESA_SHORTCODE,
+        "PhoneNumber": phone,
+        "CallBackURL": settings.MPESA_CALLBACK_URL,
+        "AccountReference": f"ORDER-{order.id}",
+        "TransactionDesc": "FashionHub Escrow",
+    }
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    print("Payload:", payload)
+    print("Headers:", headers)
+
+    response = requests.post(
+        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+        json=payload,
+        headers=headers,
+    )
+
+    response_data = response.json()
+    print("M-Pesa Response:", response_data)
+
+    if response_data.get("ResponseCode") == "0":
+        return HttpResponse("""
+            <div style="text-align: center; padding: 20px; background: #d4edda; color: #155724; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0;">✓ Success</h3>
+                <p style="margin: 0;">Payment request sent! Check your phone for the M-Pesa prompt.</p>
+            </div>
+        """)
+    else:
+        error_message = response_data.get("CustomerMessage", "Payment request failed")
+        return HttpResponse(f"""
+            <div style="text-align: center; padding: 20px; background: #f8d7da; color: #721c24; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0;">✗ Error</h3>
+                <p style="margin: 0;">{error_message}</p>
+            </div>
+        """)
+
+
+@csrf_exempt
+def mpesa_callback(request):
+    try:
+        data = json.loads(request.body)
+        print("M-Pesa callback received:", data)
+
+        callback = data.get("Body", {}).get("stkCallback", {})
+
+        if callback.get("ResultCode") == 0:
+            metadata = callback.get("CallbackMetadata", {}).get("Item", [])
+            mpesa_receipt_num = None
+
+            for item in metadata:
+                if item.get("Name") == "MpesaReceiptNumber":
+                    mpesa_receipt_num = item.get("Value")
+                    break
+
+            order = Order.objects.filter(status="PENDING").order_by("-id").first()
+
+            if order and mpesa_receipt_num:
+                order.mpesa_receipt = mpesa_receipt_num
+                order.status = "PAID"
+                order.save()
+                print(
+                    f"Order {order.tracking_number} updated - Receipt: {mpesa_receipt_num}, Status: PAID"
+                )
+
+                if not order.items.exists():
+                    print("Warning: Order has no items after payment")
+
+                # Create platform receipt
+                try:
+                    pdf_buffer = generate_receipt_pdf(order)
+                    platform_receipt = Receipt.objects.create(
+                        order=order,
+                        pdf_file=pdf_buffer.getvalue() if pdf_buffer else None,
+                    )
+                    print(
+                        f"✓ Platform receipt created: {platform_receipt.receipt_number}"
+                    )
+                except Exception as e:
+                    print(f"✗ Platform receipt creation failed: {e}")
+
+                # Send confirmation email (backup)
+                email = order.email or order.buyer.email
+                if email:
+                    try:
+                        subject = f"Payment Confirmed - FashionHub Order {order.tracking_number}"
+                        text_message = f"""
+Dear {order.buyer.username},
+
+Your payment has been successfully received!
+
+Payment Details:
+- M-Pesa Receipt: {mpesa_receipt_num}
+- Order Number: {order.tracking_number}
+- Items Total: KES {order.get_total_amount()}
+- Delivery Fee: KES {order.delivery_fee}
+- Grand Total: KES {order.get_grand_total()}
+- Payment Status: PAID
+
+Your receipt is available in your account.
+
+Thank you for shopping with FashionHub!
+Your order will be delivered within 1-2 days.
+
+Best regards,
+The FashionHub Team
+                        """
+                        email_msg = EmailMultiAlternatives(
+                            subject, text_message, settings.EMAIL_HOST_USER, [email]
+                        )
+                        if pdf_buffer:
+                            email_msg.attach(
+                                f"Receipt_{order.tracking_number}.pdf",
+                                pdf_buffer.getvalue(),
+                                "application/pdf",
+                            )
+                        email_msg.send(fail_silently=False)
+                        print(f"✓ Receipt email sent to {email}")
+                    except Exception as e:
+                        print(f"✗ Email sending failed: {e}")
+            else:
+                print("No pending order found or no receipt number")
+        else:
+            result_desc = callback.get("ResultDesc", "Payment failed")
+            print(f"Payment failed: {result_desc}")
+
+    except Exception as e:
+        print(f"Callback error: {e}")
+
+    return HttpResponse("OK")
+
+
+def featured_products(request):
+    sort_order = request.GET.get("sort", "default")
+
+    if sort_order == "low-to-high":
+        products = Product.objects.all().order_by("price")
+    elif sort_order == "high-to-low":
+        products = Product.objects.all().order_by("-price")
+    else:
+        products = Product.objects.all()
+
+    return render(
+        request, "shop/featured.html", {"products": products, "sort_order": sort_order}
+    )
+
+
+@csrf_exempt
+def subscribe(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+
+        if not email:
+            return JsonResponse(
+                {"success": False, "message": "Please enter a valid email address"}
+            )
+
+        try:
+            subject = "Welcome to FashionHub Newsletter!"
+            message = f"""
+            Dear Subscriber,
+
+            Thank you for subscribing to FashionHub's newsletter!
+
+            You'll now be the first to know about:
+            - Fashion tips and styling advice
+            - Upcoming sales and events
+
+            Stay stylish!
+
+            Best regards,
+            The FashionHub Team
+            """
+
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": "Successfully subscribed! Check your email for confirmation.",
+                }
+            )
+
+        except Exception as e:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": f"Subscription failed. Please try again later.",
+                }
+            )
+
+    return JsonResponse({"success": False, "message": "Invalid request method"})
+
+
+def faq(request):
+    return render(request, "shop/faq.html")
+
+
+def contact(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+        email = request.POST.get("email")
+        message = request.POST.get("message")
+
+        # Send contact email to admin
+        try:
+            subject = f"Contact Form: Message from {name}"
+            admin_message = f"""
+            You have received a new contact form submission:
+            
+            Name: {name}
+            Email: {email}
+            
+            Message:
+            {message}
+            
+            ---
+            Reply directly to: {email}
+            """
+
+            send_mail(
+                subject,
+                admin_message,
+                settings.EMAIL_HOST_USER,
+                [settings.EMAIL_HOST_USER],  # Send to myself
+                fail_silently=False,
+            )
+
+            index_url = reverse("index")
+            return HttpResponse(f"""
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 20px;">
+                        <a href="{index_url}" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">
+                            ← Back to Home
+                        </a>
+                    </div>
+                    <hr style="border: none; border-top: 2px solid #ddd; margin: 20px 0;">
+                    <div style="text-align: center; padding: 40px; background: #d4edda; color: #155724; border-radius: 8px;">
+                        <h2 style="margin: 0 0 15px 0;">✓ Thank You for Contacting Us!</h2>
+                        <p style="margin: 0; font-size: 16px;">We've received your message and will get back to you soon.</p>
+                    </div>
+                </div>
+            """)
+        except Exception as e:
+            index_url = reverse("index")
+            return HttpResponse(f"""
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 20px;">
+                        <a href="{index_url}" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">
+                            ← Back to Home
+                        </a>
+                    </div>
+                    <hr style="border: none; border-top: 2px solid #ddd; margin: 20px 0;">
+                    <div style="text-align: center; padding: 40px; background: #f8d7da; color: #721c24; border-radius: 8px;">
+                        <h2 style="margin: 0 0 15px 0;">✗ Error</h2>
+                        <p style="margin: 0; font-size: 16px;">Failed to send message. Please try again.</p>
+                    </div>
+                </div>
+            """)
+
+    return render(request, "shop/contact.html")
+
+
+def shipping_info(request):
+    return render(request, "shop/shipping_info.html")
+
+
+def returns(request):
+    return render(request, "shop/returns.html")
+
+
+def logout_view(request):
+    logout(request)
+    return redirect("index")
+
+
+# @user_passes_test(lambda u: u.is_staff)
+def inventory(request):
+    """Dashboard for tracking orders and product inventory - Admin only"""
+    # Get all orders
+    orders = Order.objects.all().order_by("-id")[:20]
+
+    # Get statistics
+    total_orders = Order.objects.count()
+    paid_orders = Order.objects.filter(status="PAID").count()
+    pending_orders = Order.objects.filter(status="PENDING").count()
+
+    # Calculate total revenue from OrderItems (3NF compliant)
+    paid_order_ids = Order.objects.filter(status="PAID").values_list("id", flat=True)
+    total_revenue = (
+        OrderItem.objects.filter(order_id__in=paid_order_ids).aggregate(
+            total=models.Sum(models.F("quantity") * models.F("price"))
+        )["total"]
+        or 0
+    )
+
+    # Get products by category
+    women_products = Product.objects.filter(category="women").order_by("name")
+    men_products = Product.objects.filter(category="men").order_by("name")
+
+    return render(
+        request,
+        "shop/inventory.html",
+        {
+            "orders": orders,
+            "total_orders": total_orders,
+            "paid_orders": paid_orders,
+            "pending_orders": pending_orders,
+            "total_revenue": total_revenue,
+            "women_products": women_products,
+            "men_products": men_products,
+        },
+    )
+
+
+def check_order_status(request):
+    if not request.user.is_authenticated:
+        return HttpResponse("")
+
+    order = Order.objects.filter(buyer=request.user).order_by("-id").first()
+
+    if order:
+        polling_attr = (
+            'hx-get="/check-order-status/" hx-trigger="every 3s" hx-swap="outerHTML"'
+            if order.status == "PENDING"
+            else ""
+        )
+        icon = "check-circle" if order.status == "PAID" else "clock-o"
+        status_class = order.status.lower()
+
+        return HttpResponse(f"""
+        <div id="order-status" {polling_attr}>
+            <div class="order-status-badge {status_class}">
+                <i class="fa fa-{icon}"></i>
+                {order.status}
+            </div>
+        </div>
+        """)
+    return HttpResponse("")
+
+
+def receipt(request, order_id):
+    """Display receipt for a paid order"""
+    order = Order.objects.get(id=order_id, buyer=request.user)
+
+    if order.status != "PAID":
+        return redirect("cart")
+
+    return render(request, "shop/receipt.html", {"order": order})
+
+
+def download_receipt_pdf(request, order_id):
+    """Download receipt as PDF"""
+    order = Order.objects.get(id=order_id, buyer=request.user)
+
+    if order.status != "PAID":
+        return redirect("cart")
+
+    pdf_buffer = generate_receipt_pdf(order)
+
+    if pdf_buffer:
+        response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="Receipt_{order.tracking_number}.pdf"'
+        )
+        return response
+    else:
+        return HttpResponse(
+            "Error generating PDF. Please install reportlab: pip install reportlab",
+            status=500,
+        )
+
+
+def test_payment(request, order_id):
+    """Test endpoint to simulate successful payment (FOR TESTING ONLY)"""
+    order = Order.objects.get(id=order_id, buyer=request.user)
+    order.status = "PAID"
+    order.mpesa_receipt = f"TEST{order_id}RECEIPT"
+    order.save()
+    return redirect("cart")
+
+
+@require_POST
+def update_shipping(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Not authenticated"}, status=403)
+    location = request.POST.get("location", "")
+    address = request.POST.get("address", "")
+    order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+    if not order:
+        return JsonResponse({"error": "No pending order found"}, status=404)
+    order.location = location
+    order.address = address
+    order.delivery_fee = calculate_delivery_fee(location)
+    order.save()
+    return JsonResponse({"success": True, "delivery_fee": order.delivery_fee})
+
+
+def my_receipts(request):
+    """Show all paid orders for the logged-in user."""
+    if request.user.is_authenticated:
+        orders = Order.objects.filter(buyer=request.user, status="PAID").order_by("-id")
+    else:
+        orders = []
+    return render(request, "shop/my_receipts.html", {"orders": orders})
+
+
+def reports(request):
+    """View all generated reports"""
+    cart = request.session.get("cart", [])
+    reports = Report.objects.all().order_by("-generated_at")
+    return render(request, "shop/reports.html", {"reports": reports, "cart": cart})
+
+
+def report_detail(request, report_id):
+    """View a specific report"""
+    cart = request.session.get("cart", [])
+    report = Report.objects.get(id=report_id)
+    return render(request, "shop/report_detail.html", {"report": report, "cart": cart})

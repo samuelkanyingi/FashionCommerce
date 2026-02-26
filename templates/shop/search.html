@@ -1,0 +1,209 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+    <title>Search Results - FashionHub</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body x-data="{ showFilters: false }">
+
+<!-- TOP PROMO BAR -->
+<div class="promo-bar">
+    <p><i class="fa fa-truck"></i> Enjoy free delivery on orders above KES 5,000! | <i class="fa fa-gift"></i> New customers get 3 free deliveries!</p>
+</div>
+
+<!-- HEADER -->
+<header class="main-header">
+    <div class="header-container">
+        <div class="header-left">
+            <span class="menu-toggle" onclick="openNav()">&#9776;</span>
+            <a href="{% url 'index' %}" class="logo">FashionHub</a>
+        </div>
+        <div class="header-center">
+            <form action="{% url 'search' %}" method="get" class="search-bar">
+                <input type="text" name="q" placeholder="Search for products, brands..." value="{{ query }}">
+                <button type="submit"><i class="fa fa-search"></i></button>
+            </form>
+        </div>
+        <div class="header-right">
+            <div class="header-actions">
+                {% if user.is_authenticated %}
+                <a href="#" class="header-action">
+                    <i class="fa fa-user"></i>
+                    <span>{{ user.username|truncatechars:8 }}</span>
+                </a>
+                <form method="post" action="{% url 'logout' %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit" class="header-action" style="background:none;border:none;cursor:pointer">
+                        <i class="fa fa-sign-out"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+                {% else %}
+                <a href="{% url 'login' %}?next={{ request.path }}" class="header-action">
+                    <i class="fa fa-user"></i>
+                    <span>Account</span>
+                </a>
+                {% endif %}
+                <a href="{% url 'cart' %}" class="header-action" id="cart-icon">
+                    <i class="fa fa-shopping-cart"></i>
+                    {% if cart|length > 0 %}
+                    <span class="cart-count">{{ cart|length }}</span>
+                    {% endif %}
+                    <span>Cart</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- NAVIGATION -->
+<nav class="main-nav">
+    <div class="nav-container">
+        <ul class="nav-links">
+            <li><a href="{% url 'index' %}">Home</a></li>
+            <li><a href="{% url 'women' %}">Women</a></li>
+            <li><a href="{% url 'men' %}">Men</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- BREADCRUMBS -->
+<div class="breadcrumbs">
+    <div class="breadcrumb-container">
+        <a href="{% url 'index' %}">Home</a>
+        <span>/</span>
+        <span class="current">Search Results</span>
+    </div>
+</div>
+
+<!-- PAGE BANNER -->
+<section class="page-banner women-banner">
+    <div class="page-banner-content">
+        <h1>Search Results</h1>
+        <p>Found {{ products|length }} products for "{{ query }}"</p>
+    </div>
+</section>
+
+<!-- MAIN CONTENT -->
+<main class="shop-main">
+    <!-- PRODUCTS AREA -->
+    <section class="shop-products">
+        <div class="product-grid modern-grid">
+{% for product in products %}
+<div class="product-card-modern">
+    <div class="product-image-wrapper">
+        {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}">
+        {% endif %}
+        <div class="product-overlay">
+            <button class="wishlist-btn" title="Add to Wishlist">
+                <i class="fa fa-heart"></i>
+            </button>
+        </div>
+    </div>
+    <div class="product-info">
+        <h3 class="product-title">{{ product.name }}</h3>
+        <div class="product-price">
+            <span class="current-price">KES {{ product.price }}</span>
+        </div>
+        <form hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML" 
+              hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+              class="add-to-cart-form">
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <select name="size" class="size-select">
+                <option value="">Size</option>
+                {% if product.subcategory == 'shoes' %}
+                    {% if product.category == 'women' %}
+                        <option value="35">35</option>
+                        <option value="36">36</option>
+                        <option value="37">37</option>
+                        <option value="38">38</option>
+                        <option value="39">39</option>
+                        <option value="40">40</option>
+                    {% else %}
+                        <option value="38">38</option>
+                        <option value="39">39</option>
+                        <option value="40">40</option>
+                        <option value="41">41</option>
+                        <option value="42">42</option>
+                        <option value="43">43</option>
+                        <option value="44">44</option>
+                    {% endif %}
+                {% else %}
+                    {% if product.category == 'women' %}
+                        <option value="XS">XS</option>
+                    {% endif %}
+                    <option value="S">S</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                {% endif %}
+            </select>
+            <button type="submit" class="add-cart-btn">
+                <i class="fa fa-shopping-cart"></i> Add to Cart
+            </button>
+        </form>
+    </div>
+</div>
+{% empty %}
+<div class="no-products">
+    <i class="fa fa-search"></i>
+    <h3>No products found</h3>
+    <p>Try searching for something else</p>
+    <a href="{% url 'index' %}" class="btn-banner" style="display:inline-block;margin-top:15px;">Browse All Products</a>
+</div>
+{% endfor %}
+        </div>
+    </section>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer-section">
+    <div class="footer-grid">
+        <div class="footer-col">
+            <h3>FashionHub</h3>
+            <p>Your destination for premium fashion</p>
+            <div class="social-links">
+                <a href="#"><i class="fa fa-facebook"></i></a>
+                <a href="#"><i class="fa fa-instagram"></i></a>
+                <a href="#"><i class="fa fa-twitter"></i></a>
+            </div>
+        </div>
+        <div class="footer-col">
+            <h4>Quick Links</h4>
+            <ul class="footer-links">
+                <li><a href="{% url 'index' %}">Home</a></li>
+                <li><a href="{% url 'women' %}">Women</a></li>
+                <li><a href="{% url 'men' %}">Men</a></li>
+                <li><a href="{% url 'contact' %}">Contact</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Customer Service</h4>
+            <ul class="footer-links">
+                <li><a href="{% url 'shipping_info' %}">Shipping Info</a></li>
+                <li><a href="{% url 'returns' %}">Returns</a></li>
+                <li><a href="{% url 'faq' %}">FAQ</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Contact Us</h4>
+            <ul class="footer-links">
+                <li><i class="fa fa-phone"></i> +254 700 000 000</li>
+                <li><i class="fa fa-envelope"></i> info@fashionhub.com</li>
+                <li><i class="fa fa-map-marker"></i> Nairobi, Kenya</li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <p>&copy; 2024 FashionHub. All rights reserved.</p>
+    </div>
+</footer>
+
+<script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

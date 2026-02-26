@@ -1,0 +1,388 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FashionHub</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <style>
+      .sidenav {
+        height: 100%;
+        width: 0;
+        position: fixed;
+        z-index: 1; 
+        top: 0; 
+        left: 0;
+        background-color: #111; 
+        overflow-x: hidden;
+        padding-top: 60px;
+        transition: 0.5s;
+      }
+
+      .sidenav a {
+        padding: 8px 8px 8px 32px;
+        text-decoration: none;
+        font-size: 25px;
+        color: #818181;
+        display: block;
+        transition: 0.3s;
+      }
+
+      .sidenav a:hover {
+        color: #f1f1f1;
+      }
+
+      .sidenav .closebtn {
+        position: absolute;
+        top: 0;
+        right: 25px;
+        font-size: 36px;
+        margin-left: 50px;
+      }
+
+      #main {
+        transition: margin-left .5s;
+        padding: 20px;
+      }
+
+      @media screen and (max-height: 450px) {
+        .sidenav {padding-top: 15px;}
+        .sidenav a {font-size: 18px;}
+      }
+
+      .menu-section {
+        animation: slideIn 0.4s ease-in-out;
+      }
+
+      [x-cloak] { 
+        display: none; 
+      }
+
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      .menu-section a i {
+        margin-left: 10px;
+        float: right;
+      } 
+
+      /* Dropdown Navigation */
+      .nav-links li.dropdown {
+        position: relative;
+      }
+      .dropdown-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: black;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        min-width: 180px;
+        padding: 10px 0;
+        z-index: 1000;
+        list-style: none;
+        margin: 0;
+      }
+      .dropdown-menu li a {
+        display: block;
+        padding: 10px 20px;
+        color: white;
+        font-size: 14px;
+      }
+      .dropdown-menu li a:hover {
+        background: #333;
+        color: #fff;
+      }
+      .nav-links li.dropdown:hover .dropdown-menu {
+        display: block;
+      }
+      .nav-links li a.active {
+        color: #04AA6D;
+        border-bottom: 2px solid #04AA6D;
+      }
+    </style>
+</head>
+<body>
+<!-- TOP PROMO BAR -->
+<div class="promo-bar">
+    <p><i class="fa fa-truck"></i> Enjoy free delivery on orders above KES 20,000!</p>
+</div>
+
+<!-- HEADER -->
+<header class="main-header">
+    <div class="header-container">
+        <div class="header-left">
+            <span class="menu-toggle" onclick="openNav()">&#9776;</span>
+            <a href="{% url 'index' %}" class="logo">FashionHub</a>
+        </div>
+
+        <div class="header-center">
+            <form action="{% url 'search' %}" method="get" class="search-bar">
+                <input type="text" name="q" placeholder="Search for products, brands...">
+                <button type="submit"><i class="fa fa-search"></i></button>
+            </form>
+        </div>
+
+        <div class="header-right">
+            <div class="header-actions">
+                <a href="{% url 'cart' %}" class="header-action" id="cart-icon">
+                    <i class="fa fa-shopping-cart"></i>
+                    {% if cart|length > 0 %}
+                    <span class="cart-count">{{ cart|length }}</span>
+                    {% endif %}
+                    <span>Cart</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- NAVIGATION -->
+<nav class="main-nav">
+    <div class="nav-container">
+        <div id="mySidenav" class="sidenav" x-data="{ currentMenu: 'main' }">
+            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+            <div x-show="currentMenu === 'main'" class="menu-section">
+                <a href="{% url 'index' %}">Home</a>
+                <a href="javascript:void(0)" @click="currentMenu = 'women'">Women <i class="fa fa-chevron-right"></i></a>
+                <a href="javascript:void(0)" @click="currentMenu = 'men'">Men <i class="fa fa-chevron-right"></i></a>
+                <a href="{% url 'reports' %}">Reports</a>
+                {% if user.is_authenticated %}
+                <a href="{% url 'cart' %}">Cart</a>
+                <a href="{% url 'my_receipts' %}">My Receipts</a>
+                {% endif %}
+            </div>
+            <div x-show="currentMenu === 'women'" class="menu-section">
+                <a href="javascript:void(0)" @click="currentMenu = 'main'"><i class="fa fa-chevron-left"></i> Back</a>
+                <a href="{% url 'women' %}?sub=clothing">Clothing</a>
+                <a href="{% url 'women' %}?sub=shoes">Shoes</a>
+                <a href="{% url 'women' %}?sub=handbags">Handbags</a>
+            </div>
+            <div x-show="currentMenu === 'men'" class="menu-section">
+                <a href="javascript:void(0)" @click="currentMenu = 'main'"><i class="fa fa-chevron-left"></i> Back</a>
+                <a href="{% url 'men' %}?sub=clothing">Clothing</a>
+                <a href="{% url 'men' %}?sub=shoes">Shoes</a>
+                <a href="{% url 'men' %}?sub=watches">Watches</a>
+            </div>
+        </div>
+        
+        <ul class="nav-links">
+            <li><a href="{% url 'index' %}" class="active">Home</a></li>
+            <li class="dropdown">
+                <a href="{% url 'women' %}">Women <i class="fa fa-chevron-down" style="font-size: 10px;"></i></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'women' %}?sub=clothing">Clothing</a></li>
+                    <li><a href="{% url 'women' %}?sub=shoes">Shoes</a></li>
+                    <li><a href="{% url 'women' %}?sub=handbags">Handbags</a></li>
+                </ul>
+            </li>
+            <li class="dropdown">
+                <a href="{% url 'men' %}">Men <i class="fa fa-chevron-down" style="font-size: 10px;"></i></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'men' %}?sub=clothing">Clothing</a></li>
+                    <li><a href="{% url 'men' %}?sub=shoes">Shoes</a></li>
+                    <li><a href="{% url 'men' %}?sub=watches">Watches</a></li>
+                </ul>
+            </li>
+            <li><a href="{% url 'contact' %}">Contact</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- PROMOTIONS CAROUSEL -->
+<section class="promo-carousel" x-data="{ currentSlide: 0, slides: [
+    {img: 'banner.jpeg'},
+    {img: 'banner2.jpg'}
+]}">
+    <div class="carousel-slides">
+        <template x-for="(slide, index) in slides" :key="index">
+            <div class="carousel-slide" :class="{active: currentSlide === index}">
+                <img :src="{% static 'images/' %} + slide.img">
+                <div class="carousel-caption">
+                    <p class="promo-tag" x-text="index === 0 ? 'Discover your style' : 'Up to 50% Off'"></p>
+                    <h1 x-text="index === 0 ? 'Collection 2026' : 'Mid-Season Sale'"></h1>
+                    <p x-text="index === 0 ? 'Explore our latest trends' : 'Limited time offers'"></p>
+                </div>
+            </div>
+        </template>
+    </div>
+    <div class="carousel-btns" style="position:absolute;bottom:20px;left:20px;z-index:10;">
+        <a href="{% url 'women' %}"><button class="btn-banner">Shop Women</button></a>
+        <a href="{% url 'men' %}"><button class="btn-banner btn2">Shop Men</button></a>
+    </div>
+    <button class="carousel-prev" @click="currentSlide = currentSlide === 0 ? slides.length - 1 : currentSlide - 1">&#10094;</button>
+    <button class="carousel-next" @click="currentSlide = currentSlide === slides.length - 1 ? 0 : currentSlide + 1">&#10095;</button>
+    <div class="carousel-dots">
+        <template x-for="(slide, index) in slides" :key="index">
+            <span class="dot" :class="{active: currentSlide === index}" @click="currentSlide = index"></span>
+        </template>
+    </div>
+</section>
+
+<!-- CATEGORY GRID -->
+<section class="category-section">
+    <h2>Top Categories</h2>
+    <p>Browse through our carefully selected categories</p>
+    <div class="category-grid">
+        <a href="{% url 'women' %}" class="category-card">
+            <div class="category-icon"><i class="fa fa-female"></i></div>
+            <h3>Women</h3>
+        </a>
+        <a href="{% url 'men' %}" class="category-card">
+            <div class="category-icon"><i class="fa fa-male"></i></div>
+            <h3>Men</h3>
+        </a>
+        <a href="{% url 'women' %}?sub=handbags" class="category-card">
+            <div class="category-icon"><i class="fa fa-shopping-bag"></i></div>
+            <h3>Handbags</h3>
+        </a>
+        <a href="{% url 'men' %}?sub=watches" class="category-card">
+            <div class="category-icon"><i class="fa fa-clock-o"></i></div>
+            <h3>Watches</h3>
+        </a>
+    </div>
+</section>
+
+<!-- FEATURED PRODUCTS -->
+<section class="featured-section">
+    <div class="section-header">
+        <h1>Shop By Category</h1>
+        <p>Browse through our carefully selected categories to find exactly what you are looking for</p>
+    </div>
+    
+</section>
+
+<!-- DELIVERY INFO -->
+<section class="delivery-info">
+    <div class="delivery-card">
+        <i class="fa fa-truck"></i>
+        <div>
+            <h4>Free Delivery</h4>
+            <p>On orders above KES 20,000</p>
+        </div>
+    </div>
+    <div class="delivery-card">
+        <i class="fa fa-clock-o"></i>
+        <div>
+            <h4>Express Delivery</h4>
+            <p>Same day delivery available</p>
+        </div>
+    </div>
+    <div class="delivery-card">
+        <i class="fa fa-undo"></i>
+        <div>
+            <h4>Easy Returns</h4>
+            <p>30-day return policy</p>
+        </div>
+    </div>
+    <div class="delivery-card">
+        <i class="fa fa-shield"></i>
+        <div>
+            <h4>Secure Payment</h4>
+            <p>100% secure checkout</p>
+        </div>
+    </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="subs" x-data="{ email: '', showPopup: false }">
+    <h1>Stay in Style</h1>
+    <p>Subscribe to our newsletter and be first to know about new arrivals, exclusive deals and fashion tips</p>
+    
+    <form @submit.prevent="showPopup = true; email = '';setTimeout(() => showPopup = false, 2000)">
+    {% csrf_token %}
+    <input 
+        type="email" 
+        name="email" 
+        x-model="email" 
+        placeholder="Enter your email" 
+        class="email" 
+        required
+    >
+    <button type="submit" class="btn-banner btn-subs">
+        Subscribe 
+        <img src="{% static 'images/share-arrow.png' %}" alt="">
+    </button>
+</form>
+<div 
+    x-show="showPopup" 
+    x-cloak
+    x-transition
+    @click.outside="showPopup = false"
+    style="
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #04AA6D;
+        color: white;
+        padding: 15px 25px;
+        border-radius: 8px;
+        z-index: 9999;
+    "
+>
+    Subscribed successfully 
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer-section">
+    <div class="footer-grid">
+        <div class="footer-col">
+            <h3>FashionHub</h3>
+            <p>Your destination for premium fashion and timeless style</p>
+            <div class="social-links">
+                <a href="#"><i class="fa fa-facebook"></i></a>
+                <a href="#"><i class="fa fa-instagram"></i></a>
+                <a href="#"><i class="fa fa-twitter"></i></a>
+                <a href="#"><i class="fa fa-youtube"></i></a>
+            </div>
+        </div>
+        <div class="footer-col">
+            <h3>Help</h3>
+            <p><a href="{% url 'faq' %}">FAQ</a></p>
+            <p><a href="{% url 'shipping_info' %}">Shipping Info</a></p>
+            <p><a href="{% url 'returns' %}">Returns</a></p>
+            <p><a href="{% url 'contact' %}">Contact Us</a></p>
+        </div>
+        <div class="footer-col">
+            <h3>About</h3>
+            <p><a href="#">About Us</a></p>
+            <p><a href="#">Careers</a></p>
+            <p><a href="#">Store Locator</a></p>
+            <p><a href="#">Blog</a></p>
+        </div>
+        <div class="footer-col">
+            <h3>Customer Service</h3>
+            <p><a href="#">Track Order</a></p>
+            <p><a href="#">Size Guide</a></p>
+            <p><a href="#">Gift Cards</a></p>
+            <p><a href="#">FAQ</a></p>
+        </div>
+    </div>
+    <hr>
+    <div class="footer-bottom">
+        <p>&copy; 2026 FashionHub. All rights reserved</p>
+        <div class="payment-methods">
+            <span>We accept:</span>
+            <i class="fa fa-mobile"></i>
+            <span style="font-weight:bold;color:#04AA6D;">M-Pesa</span>
+        </div>
+    </div>
+</footer>
+<script src="{% static 'js/main.js' %}"></script>
+</script>
+
+</body>
+</html>
