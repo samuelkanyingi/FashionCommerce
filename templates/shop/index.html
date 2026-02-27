@@ -260,18 +260,20 @@
     <h1>Shop By Category</h1>
     <p>Browse through our carefully selected categories to find exactly what you are looking for</p>
     <div class="product-grid">
-        <a href="{% url 'women' %}">
-          <div class="product-card">
+        <a href="{% url 'women' %}" class="category-banner">
             <img src="/media/products/w1.jpg" alt="Women Fashion">
-            <h3>Women Collection</h3>
-          </div>
-        </a>
+            <div class="category-banner-text">
+                <h2>Women Collection</h2>
+                <p>Shop Now</div>
+        </p>
+            </a>
         
-        <a href="{% url 'men' %}">
-          <div class="product-card">
+        <a href="{% url 'men' %}" class="category-banner">
             <img src="/media/products/m1.jpg" alt="Men Fashion">
-            <h3>Men Collection</h3>
-          </div>
+            <div class="category-banner-text">
+                <h2>Men Collection</h2>
+                <p>Shop Now</p>
+            </div>
         </a>  
     </div>
 </section>

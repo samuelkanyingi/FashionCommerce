@@ -237,6 +237,49 @@ body {
     margin-right: auto;
 }
 
+/* Category Banner with Text Overlay */
+.category-banner {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.category-banner img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s;
+}
+
+.category-banner:hover img {
+    transform: scale(1.05);
+}
+
+.category-banner-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    width: 100%;
+}
+
+.category-banner-text h2 {
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    margin: 0;
+}
+
+.category-banner-text p {
+    font-size: 14px;
+    margin: 8px 0 0;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.7);
+}
+
 .product-card {
     border: 1px solid #ddd;
     padding: 10px;
