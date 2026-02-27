@@ -261,7 +261,20 @@
         <h1>Shop By Category</h1>
         <p>Browse through our carefully selected categories to find exactly what you are looking for</p>
     </div>
-    
+    <div class="product-grid">
+        {% for product in products %}
+        <div class="product-card">
+            <div class="product-image">
+                <img src="{{ product.image.url }}" alt="{{ product.name }}">
+            </div>
+            <div class="product-info">
+                <h3>{{ product.name }}</h3>
+                <p class="price">KES {{ product.price }}</p>
+                <a href="{% url 'women' %}" class="btn-add">View</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </section>
 
 <!-- DELIVERY INFO -->

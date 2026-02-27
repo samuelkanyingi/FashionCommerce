@@ -208,7 +208,9 @@ def index(request):
     except:
         cart = []
         request.session["cart"] = cart
-    return render(request, "shop/index.html", {"cart": cart})
+
+    products = Product.objects.all()[:8]
+    return render(request, "shop/index.html", {"cart": cart, "products": products})
 
 
 def register(request):
