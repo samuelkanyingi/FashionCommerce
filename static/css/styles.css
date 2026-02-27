@@ -625,6 +625,51 @@ body {
     background: #04AA6D;
 }
 
+/* Large Category Cards */
+.category-card-large {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: 500px;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 10px;
+    margin: 0 auto;
+}
+
+.category-card-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.category-card-large:hover img {
+    transform: scale(1.05);
+}
+
+.category-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.category-overlay h2 {
+    margin: 0;
+    font-size: 28px;
+}
+
+.category-overlay p {
+    margin: 5px 0 0;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
 /* DELIVERY INFO */
 .delivery-info {
     display: grid;
