@@ -24,7 +24,6 @@ from django.views.static import serve
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("shop.urls")),
-    path("api/", include("shop.urls")),
 ]
 
 # Serve media files in production
