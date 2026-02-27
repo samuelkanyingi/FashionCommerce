@@ -259,9 +259,9 @@ body {
 
 .category-banner-text {
     position: absolute;
-    top: 50%;
+    bottom: 20px;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateX(-50%);
     text-align: center;
     color: white;
     width: 100%;
