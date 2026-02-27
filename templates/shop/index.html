@@ -257,25 +257,22 @@
 
 <!-- FEATURED PRODUCTS -->
 <section class="featured-section">
-    <div class="section-header">
-        <h1>Shop By Category</h1>
-        <p>Browse through our carefully selected categories to find exactly what you are looking for</p>
-    </div>
-    <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; padding: 20px; max-width: 900px; margin: 0 auto;">
-        <a href="{% url 'women' %}" class="category-card-large">
-            <img src="/media/products/w1.jpg" alt="Women">
-            <div class="category-overlay">
-                <h2>Women</h2>
-                <p>Shop Now</p>
-            </div>
+    <h1>Shop By Category</h1>
+    <p>Browse through our carefully selected categories to find exactly what you are looking for</p>
+    <div class="product-grid">
+        <a href="{% url 'women' %}">
+          <div class="product-card">
+            <img src="/media/products/w1.jpg" alt="Women Fashion">
+            <h3>Women Collection</h3>
+          </div>
         </a>
-        <a href="{% url 'men' %}" class="category-card-large">
-            <img src="/media/products/m1.jpg" alt="Men">
-            <div class="category-overlay">
-                <h2>Men</h2>
-                <p>Shop Now</p>
-            </div>
-        </a>
+        
+        <a href="{% url 'men' %}">
+          <div class="product-card">
+            <img src="/media/products/m1.jpg" alt="Men Fashion">
+            <h3>Men Collection</h3>
+          </div>
+        </a>  
     </div>
 </section>
 
