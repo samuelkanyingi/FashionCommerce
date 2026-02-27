@@ -552,7 +552,7 @@
     "name": "Blazer",
     "description": "High quality blazer for women",
     "price": 5000,
-    "image": "products/Blazer.jpg",
+    "image": "products/Blazer_ouUr3ID.jpg",
     "category": "women",
     "subcategory": "clothing",
     "stock": 59
@@ -683,7 +683,7 @@
     "description": "High quality espadrilles for women",
     "price": 2000,
     "image": "products/Espadrilles.jpg",
-    "category": "men",
+    "category": "women",
     "subcategory": "shoes",
     "stock": 55
   }
@@ -735,7 +735,7 @@
     "description": "High quality slip ons for women",
     "price": 2500,
     "image": "products/SlipOns.jpg",
-    "category": "men",
+    "category": "women",
     "subcategory": "shoes",
     "stock": 64
   }
@@ -761,7 +761,7 @@
     "description": "High quality running shoes for women",
     "price": 5000,
     "image": "products/RunningShoes.jpg",
-    "category": "men",
+    "category": "women",
     "subcategory": "shoes",
     "stock": 16
   }
@@ -1836,12 +1836,12 @@
   "model": "shop.product",
   "pk": 142,
   "fields": {
-    "name": "Elegant Dress",
+    "name": "Ankle Boots",
     "description": "",
     "price": 4500,
     "image": "products/AnkleBoots.jpg",
     "category": "women",
-    "subcategory": "clothing",
+    "subcategory": "shoes",
     "stock": 10
   }
 },

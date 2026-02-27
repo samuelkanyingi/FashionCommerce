@@ -140,7 +140,7 @@ class Command(BaseCommand):
                 or product.subcategory != old_subcategory
             ):
                 self.stdout.write(
-                    f"Fixed: {product.name} ({old_category}/{old_subcategory}) → ({product.category}/{product.subcategory})"
+                    f"Fixed: {product.name} ({old_category}/{old_subcategory}) -> ({product.category}/{product.subcategory})"
                 )
                 product.save()
                 fixed_count += 1
