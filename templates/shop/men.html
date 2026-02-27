@@ -133,7 +133,7 @@
                            data-sub="shoes"
                            @click="selectedSubcat = 'shoes'"
                            :class="{'active-filter': selectedSubcat === 'shoes'}">
-                            <i class="fa fa-angle-right"></i> Shoes <span class="filter-count">(23)</span>
+                            <i class="fa fa-angle-right"></i> Shoes <span class="filter-count">(20)</span>
                         </a>
                     </li>
                     <li>
@@ -269,9 +269,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const counts = {
-        'all': 72,
+        'all': 69,
         'clothing': 26,
-        'shoes': 23,
+        'shoes': 20,
         'watches': 23
     };
     document.querySelectorAll('.filter-item').forEach(function(link) {
