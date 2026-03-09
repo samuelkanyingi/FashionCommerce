@@ -418,28 +418,11 @@ def cart(request):
     total = sum(item["total_price"] for item in cart_items)
 
     order = None
-    
-    # Create order for both logged in and anonymous users
-    if cart_items:
-        if request.user.is_authenticated:
-            order, created = Order.objects.get_or_create(
-                buyer=request.user, status="PENDING", defaults={"delivery_fee": 0}
-            )
-        else:
-            # For anonymous users, create order based on session
-            order_id = request.session.get("pending_order_id")
-            if order_id:
-                order = Order.objects.filter(id=order_id, status="PENDING").first()
-            if not order:
-                # Create new anonymous order
-                from django.contrib.auth.models import User
-                anonymous_user = User.objects.filter(username="anonymous").first()
-                if not anonymous_user:
-                    anonymous_user = User.objects.create_user(username="anonymous", password="anonymous123")
-                order = Order.objects.create(buyer=anonymous_user, status="PENDING", delivery_fee=0)
-                request.session["pending_order_id"] = order.id
-        
-        if order:
+    if request.user.is_authenticated:
+        order, created = Order.objects.get_or_create(
+            buyer=request.user, status="PENDING", defaults={"delivery_fee": 0}
+        )
+        if cart_items:
             order.items.all().delete()
             for item in cart_items:
                 try:
@@ -454,11 +437,11 @@ def cart(request):
                 except Product.DoesNotExist:
                     print(f"Product not found: {item['name']}")
 
-            # Calculate delivery fee from location
-            location = request.POST.get("location") or (order.location if order else None)
-            if location:
-                order.delivery_fee = calculate_delivery_fee(location)
-                order.save()
+        # Calculate delivery fee from location
+        location = request.POST.get("location") or order.location
+        if location:
+            order.delivery_fee = calculate_delivery_fee(location)
+            order.save()
 
     return render(
         request, "shop/cart.html", {"cart": cart_items, "total": total, "order": order}
