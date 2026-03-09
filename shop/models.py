@@ -100,7 +100,7 @@ class Order(models.Model):
     address = models.CharField(max_length=255, null=True, blank=True)
     landmark = models.CharField(max_length=200, null=True, blank=True)
     id = models.AutoField(primary_key=True)
-    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders")
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="orders", null=True, blank=True)
     phone = models.CharField(max_length=15, null=True, blank=True)
     email = models.EmailField(null=True, blank=True)
     city = models.CharField(max_length=100, null=True, blank=True)

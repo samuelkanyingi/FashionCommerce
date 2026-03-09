@@ -418,11 +418,27 @@ def cart(request):
     total = sum(item["total_price"] for item in cart_items)
 
     order = None
-    if request.user.is_authenticated:
-        order, created = Order.objects.get_or_create(
-            buyer=request.user, status="PENDING", defaults={"delivery_fee": 0}
-        )
-        if cart_items:
+    
+    # Create order for both logged in and guest users
+    if cart_items:
+        if request.user.is_authenticated:
+            # Logged in user
+            order, created = Order.objects.get_or_create(
+                buyer=request.user, status="PENDING", defaults={"delivery_fee": 0}
+            )
+        else:
+            # Guest user - get order from session
+            order_id = request.session.get("guest_order_id")
+            if order_id:
+                order = Order.objects.filter(id=order_id, status="PENDING").first()
+            
+            if not order:
+                # Create new order for guest
+                order = Order.objects.create(status="PENDING", delivery_fee=0)
+                request.session["guest_order_id"] = order.id
+        
+        if order:
+            # Update order items
             order.items.all().delete()
             for item in cart_items:
                 try:
@@ -437,11 +453,11 @@ def cart(request):
                 except Product.DoesNotExist:
                     print(f"Product not found: {item['name']}")
 
-        # Calculate delivery fee from location
-        location = request.POST.get("location") or order.location
-        if location:
-            order.delivery_fee = calculate_delivery_fee(location)
-            order.save()
+            # Calculate delivery fee from location
+            location = request.POST.get("location") or (order.location if order else None)
+            if location:
+                order.delivery_fee = calculate_delivery_fee(location)
+                order.save()
 
     return render(
         request, "shop/cart.html", {"cart": cart_items, "total": total, "order": order}
@@ -469,6 +485,11 @@ def update_cart(request):
         order = None
         if request.user.is_authenticated:
             order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+        else:
+            # Guest user - get order from session
+            order_id = request.session.get("guest_order_id")
+            if order_id:
+                order = Order.objects.filter(id=order_id, status="PENDING").first()
 
         return render(
             request,
@@ -485,14 +506,27 @@ def remove_item(request):
         cart = [item for item in cart if item["name"] != name]
         request.session["cart"] = cart
 
-        if not cart and request.user.is_authenticated:
-            Order.objects.filter(buyer=request.user, status="PENDING").delete()
+        # Delete order if cart is empty
+        if not cart:
+            if request.user.is_authenticated:
+                Order.objects.filter(buyer=request.user, status="PENDING").delete()
+            else:
+                # Guest user
+                order_id = request.session.get("guest_order_id")
+                if order_id:
+                    Order.objects.filter(id=order_id, status="PENDING").delete()
+                    del request.session["guest_order_id"]
 
         total = sum(i["price"] * i.get("quantity", 1) for i in cart)
 
         order = None
         if request.user.is_authenticated:
             order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+        else:
+            # Guest user
+            order_id = request.session.get("guest_order_id")
+            if order_id:
+                order = Order.objects.filter(id=order_id, status="PENDING").first()
 
         return render(
             request,
@@ -577,10 +611,14 @@ def stk_push(request, order_id):
     print("M-Pesa Response:", response_data)
 
     if response_data.get("ResponseCode") == "0":
-        return HttpResponse("""
+        return HttpResponse(f"""
             <div style="text-align: center; padding: 20px; background: #d4edda; color: #155724; border-radius: 6px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0;">✓ Success</h3>
                 <p style="margin: 0;">Payment request sent! Check your phone for the M-Pesa prompt.</p>
+                <div style="margin-top: 15px; padding: 10px; background: white; border-radius: 5px;">
+                    <p style="margin: 0 0 5px 0; font-size: 14px;"><strong>Order Number:</strong> {order.tracking_number}</p>
+                    <p style="margin: 0; font-size: 12px; color: #666;">Save this to track your order!</p>
+                </div>
             </div>
         """)
     else:
@@ -980,3 +1018,29 @@ def report_detail(request, report_id):
     cart = request.session.get("cart", [])
     report = Report.objects.get(id=report_id)
     return render(request, "shop/report_detail.html", {"report": report, "cart": cart})
+
+
+def track_order(request):
+    """Track order by tracking number or email"""
+    cart = request.session.get("cart", [])
+    order = None
+    error = None
+    
+    if request.method == "POST":
+        tracking_input = request.POST.get("tracking_number", "").strip()
+        email_input = request.POST.get("email", "").strip()
+        
+        if tracking_input:
+            # Look up by tracking number
+            order = Order.objects.filter(tracking_number__iexact=tracking_input).first()
+            if not order:
+                error = "No order found with that tracking number."
+        elif email_input:
+            # Look up by email
+            order = Order.objects.filter(email__iexact=email_input, status="PAID").first()
+            if not order:
+                error = "No paid order found with that email."
+        else:
+            error = "Please enter a tracking number or email."
+    
+    return render(request, "shop/track_order.html", {"cart": cart, "order": order, "error": error})

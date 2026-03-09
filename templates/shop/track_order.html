@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Order - FashionHub</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        .track-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .track-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .track-header h1 {
+            color: #04AA6D;
+            margin-bottom: 10px;
+        }
+        .track-form {
+            margin-bottom: 30px;
+        }
+        .track-form input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .track-form button {
+            width: 100%;
+            padding: 15px;
+            background: #04AA6D;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .track-form button:hover {
+            background: #059a5e;
+        }
+        .or-divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #888;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .order-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .order-details h2 {
+            color: #04AA6D;
+            margin-bottom: 20px;
+        }
+        .order-info {
+            margin-bottom: 15px;
+        }
+        .order-info strong {
+            display: inline-block;
+            width: 150px;
+            color: #555;
+        }
+        .order-items {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .status-paid {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #04AA6D;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div style="background: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+            <a href="{% url 'index' %}" style="font-size: 1.5rem; font-weight: bold; color: #04AA6D; text-decoration: none;">FashionHub</a>
+            <div>
+                <a href="{% url 'index' %}" style="color: #333; text-decoration: none; margin-right: 20px;">Home</a>
+                <a href="{% url 'cart' %}" style="color: #333; text-decoration: none;"><i class="fa fa-shopping-cart"></i> Cart</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="track-container">
+        <div class="track-header">
+            <h1><i class="fa fa-search"></i> Track Order</h1>
+            <p>Enter your tracking number or email to find your order</p>
+        </div>
+        
+        {% if error %}
+        <div class="error-message">
+            <i class="fa fa-exclamation-circle"></i> {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="POST" class="track-form">
+            {% csrf_token %}
+            <input type="text" name="tracking_number" placeholder="Enter Tracking Number (e.g., A1B2C3)" value="{{ request.POST.tracking_number|default:'' }}">
+            
+            <div class="or-divider">OR</div>
+            
+            <input type="email" name="email" placeholder="Enter Email Address" value="{{ request.POST.email|default:'' }}">
+            
+            <button type="submit">
+                <i class="fa fa-search"></i> Track Order
+            </button>
+        </form>
+        
+        {% if order %}
+        <div class="order-details">
+            <h2>Order Found!</h2>
+            
+            <div class="order-info">
+                <strong>Order Number:</strong> {{ order.tracking_number }}
+            </div>
+            <div class="order-info">
+                <strong>Status:</strong> 
+                <span class="status-badge {% if order.status == 'PAID' %}status-paid{% else %}status-pending{% endif %}">
+                    {{ order.status }}
+                </span>
+            </div>
+            <div class="order-info">
+                <strong>Date:</strong> {{ order.created_at|date:"F d, Y" }}
+            </div>
+            <div class="order-info">
+                <strong>Items Total:</strong> KES {{ order.get_total_amount }}
+            </div>
+            <div class="order-info">
+                <strong>Delivery Fee:</strong> KES {{ order.delivery_fee }}
+            </div>
+            <div class="order-info">
+                <strong>Grand Total:</strong> KES {{ order.get_grand_total }}
+            </div>
+            
+            {% if order.items.all %}
+            <div class="order-items">
+                <h3>Order Items</h3>
+                {% for item in order.items.all %}
+                <div class="order-item">
+                    <span>{{ item.product.name }} x {{ item.quantity }}</span>
+                    <span>KES {{ item.get_total }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <a href="{% url 'index' %}" class="back-link">
+                <i class="fa fa-arrow-left"></i> Back to Home
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -765,9 +765,9 @@
                 </button>
             </form>
             {% else %}
-            <div class="error-message">
-                <i class="fa fa-exclamation-circle"></i>
-                Error: Unable to create order. Please refresh and try again.
+            <div class="login-prompt" style="text-align: center; padding: 20px;">
+                <p style="margin-bottom: 15px;">You can checkout as a guest or <a href="{% url 'login' %}">login</a> for a faster experience.</p>
+                <p style="font-size: 14px; color: #666;">No account needed - just enter your email and phone to complete purchase!</p>
             </div>
             {% endif %}
 
