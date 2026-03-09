@@ -452,6 +452,8 @@ def cart(request):
                     )
                 except Product.DoesNotExist:
                     print(f"Product not found: {item['name']}")
+                except Exception as e:
+                    print(f"Error creating order item: {e}")
 
             # Calculate delivery fee from location
             location = request.POST.get("location") or (order.location if order else None)
