@@ -85,8 +85,9 @@
           <div class="nav-menu">
             <a href="{% url 'women' %}" class="nav-item">Women</a>
             <a href="{% url 'men' %}" class="nav-item">Men</a>
-            <a href="{% url 'women' %}?sub=shoes&sort=high-to-low" class="nav-item" style="color: #e74c3c;">Sale</a>
-            
+            <!-- <a href="{% url 'women' %}?sub=shoes&sort=high-to-low" class="nav-item" style="color: #e74c3c;">Sale</a> -->
+            <li><a href="{% url 'track_order' %}">Track Order</a></li>
+
             <div class="nav-dropdown">
               <a href="#" class="nav-item">Categories <i class="fa fa-chevron-down"></i></a>
               <div class="nav-dropdown-content">
