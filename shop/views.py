@@ -443,17 +443,23 @@ def cart(request):
             for item in cart_items:
                 try:
                     product = Product.objects.get(name=item["name"])
+                    # Use product's current price instead of cart price
                     OrderItem.objects.create(
                         order=order,
                         product=product,
                         quantity=item.get("quantity", 1),
-                        price=item["price"],
+                        price=product.price,  # Use current product price
                         size=item.get("size", ""),
                     )
+                    print(f"Created order item: {product.name} - KES {product.price}")
                 except Product.DoesNotExist:
                     print(f"Product not found: {item['name']}")
                 except Exception as e:
-                    print(f"Error creating order item: {e}")
+                    print(f"Error creating order item: {e} - item: {item}")
+
+            # Save order after adding items
+            order.save()
+            print(f"Order {order.id} total: {order.get_grand_total()}")
 
             # Calculate delivery fee from location
             location = request.POST.get("location") or (order.location if order else None)
@@ -553,11 +559,18 @@ def stk_push(request, order_id):
         order.email = email
     if location:
         order.location = location
-        order.delivery_fee = calculate_delivery_fee(location)
     if address:
         order.address = address
     if landmark:
         order.landmark = landmark
+    
+    # Use frontend-calculated delivery fee instead of recalculating
+    delivery_fee_input = request.POST.get("delivery_fee")
+    if delivery_fee_input:
+        order.delivery_fee = int(delivery_fee_input)
+    elif location:
+        # Fallback to calculated fee if not provided
+        order.delivery_fee = calculate_delivery_fee(location)
 
     order.save()
 
@@ -579,7 +592,15 @@ def stk_push(request, order_id):
     elif phone.startswith("7") or phone.startswith("1"):
         phone = "254" + phone
 
-    order_total = order.get_grand_total()
+    # ALWAYS use the order's calculated total, not the form's submitted amount
+    # This ensures correct amount is charged regardless of what was submitted
+    order_total = int(order.get_grand_total())
+    
+    # Ensure minimum amount is 1 (M-Pesa requirement)
+    if order_total < 1:
+        order_total = 1
+    
+    print(f"Payment - Order {order.id}: Total items: {order.items.count()}, Subtotal: {order.get_total_amount()}, Delivery: {order.delivery_fee}, Grand Total: {order_total}")
 
     payload = {
         "BusinessShortCode": settings.MPESA_SHORTCODE,
@@ -603,14 +624,42 @@ def stk_push(request, order_id):
     print("Payload:", payload)
     print("Headers:", headers)
 
-    response = requests.post(
-        "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-        json=payload,
-        headers=headers,
-    )
-
-    response_data = response.json()
-    print("M-Pesa Response:", response_data)
+    try:
+        response = requests.post(
+            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+        
+        print("Response status:", response.status_code)
+        print("Response text:", response.text[:500] if response.text else "Empty")
+        
+        if not response.text:
+            return HttpResponse("""
+                <div style="text-align: center; padding: 20px; background: #f8d7da; color: #721c24; border-radius: 6px; margin: 20px 0;">
+                    <h3 style="margin: 0 0 10px 0;">✗ Error</h3>
+                    <p style="margin: 0;">Payment service returned empty response. Please try again.</p>
+                </div>
+            """)
+        
+        response_data = response.json()
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        return HttpResponse(f"""
+            <div style="text-align: center; padding: 20px; background: #f8d7da; color: #721c24; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0;">✗ Error</h3>
+                <p style="margin: 0;">Invalid response from payment service. Please try again.</p>
+            </div>
+        """)
+    except requests.exceptions.RequestException as e:
+        print(f"Request error: {e}")
+        return HttpResponse(f"""
+            <div style="text-align: center; padding: 20px; background: #f8d7da; color: #721c24; border-radius: 6px; margin: 20px 0;">
+                <h3 style="margin: 0 0 10px 0;">✗ Error</h3>
+                <p style="margin: 0;">Connection error. Please check your internet and try again.</p>
+            </div>
+        """)
 
     if response_data.get("ResponseCode") == "0":
         return HttpResponse(f"""

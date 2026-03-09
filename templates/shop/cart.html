@@ -551,13 +551,9 @@
                 <span>Subtotal</span>
                 <span>KES {{ total }}</span>
             </div>
-            <div class="summary-row">
-                <span>Service Fee</span>
-                <span>KES 5</span>
-            </div>
             <div class="summary-row total">
                 <span>Total</span>
-                <span>KES {{ total|add:5 }}</span>
+                <span>KES {{ total }}</span>
             </div>
 
             <button class="checkout-btn" @click="open = true">
@@ -659,13 +655,10 @@
                         <span x-show="!freeDelivery" x-text="'KES ' + deliveryFee"></span>
                         <span x-show="freeDelivery" class="free-delivery-badge"><i class="fa fa-gift"></i> FREE</span>
                     </div>
-                    <div class="delivery-fee-row">
-                        <span><i class="fa fa-tag"></i> Service Fee</span>
-                        <span>KES 5</span>
-                    </div>
                     <div class="delivery-fee-row" style="border-top: 1px solid #ddd; margin-top: 8px; padding-top: 8px; font-weight: 600;">
-                        <span>Total Fees</span>
-                        <span x-text="'KES ' + (5 + (freeDelivery ? 0 : deliveryFee))"></span>
+                        <span>Total Delivery Fee</span>
+                        <span x-show="!freeDelivery" x-text="'KES ' + deliveryFee"></span>
+                        <span x-show="freeDelivery" class="free-delivery-badge"><i class="fa fa-gift"></i> FREE</span>
                     </div>
                     <div class="free-delivery-hint" x-show="!freeDelivery && cartTotal > 0">
                         <i class="fa fa-info-circle"></i>
@@ -737,17 +730,13 @@
             </div>
             <div class="review-totals">
                 <div class="review-row">
-                    <span>Service Fee</span>
-                    <span>KES 5</span>
-                </div>
-                <div class="review-row">
                     <span>Delivery Fee</span>
                     <span x-show="!freeDelivery" x-text="'KES ' + deliveryFee"></span>
                     <span x-show="freeDelivery" class="free-delivery-badge">FREE</span>
                 </div>
                 <div class="review-row total">
                     <span>Grand Total</span>
-                    <span x-text="'KES ' + ({{ total|default:0 }} + 5 + (freeDelivery ? 0 : deliveryFee))"></span>
+                    <span x-text="'KES ' + ({{ total|default:0 }} + (freeDelivery ? 0 : deliveryFee))"></span>
                 </div>
             </div>
 
@@ -757,8 +746,6 @@
                 <input type="hidden" name="phone" :value="phone">
                 <input type="hidden" name="email" :value="email">
                 <input type="hidden" name="location" :value="selectedLocation?.short_name || selectedLocation?.display_name || ''">
-                <input type="hidden" name="amount" :value="{{ total|default:0 }} + 5 + (freeDelivery ? 0 : deliveryFee)">
-                <input type="hidden" name="service_fee" value="5">
                 <input type="hidden" name="delivery_fee" :value="freeDelivery ? 0 : deliveryFee">
                 <button type="submit" class="btn-primary btn-pay">
                     <i class="fa fa-lock"></i> Confirm & Pay
