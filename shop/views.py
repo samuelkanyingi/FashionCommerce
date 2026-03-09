@@ -418,27 +418,39 @@ def cart(request):
     total = sum(item["total_price"] for item in cart_items)
 
     order = None
-    if request.user.is_authenticated:
-        order, created = Order.objects.get_or_create(
-            buyer=request.user, status="PENDING", defaults={"delivery_fee": 0}
-        )
-        if cart_items:
-            order.items.all().delete()
-            for item in cart_items:
-                try:
-                    product = Product.objects.get(name=item["name"])
-                    OrderItem.objects.create(
-                        order=order,
-                        product=product,
-                        quantity=item.get("quantity", 1),
-                        price=item["price"],
-                        size=item.get("size", ""),
-                    )
-                except Product.DoesNotExist:
-                    print(f"Product not found: {item['name']}")
+    
+    # Allow checkout without login - create temp order ID
+    if cart_items:
+        order_id = request.session.get("order_id")
+        if order_id:
+            order = Order.objects.filter(id=order_id).first()
+        
+        if not order:
+            # Create temporary order without user
+            order = Order.objects.create(
+                buyer=None, 
+                status="PENDING", 
+                delivery_fee=0
+            )
+            request.session["order_id"] = order.id
+        
+        # Update order items
+        order.items.all().delete()
+        for item in cart_items:
+            try:
+                product = Product.objects.get(name=item["name"])
+                OrderItem.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=item.get("quantity", 1),
+                    price=item["price"],
+                    size=item.get("size", ""),
+                )
+            except Product.DoesNotExist:
+                print(f"Product not found: {item['name']}")
 
         # Calculate delivery fee from location
-        location = request.POST.get("location") or order.location
+        location = request.POST.get("location") or (order.location if order else None)
         if location:
             order.delivery_fee = calculate_delivery_fee(location)
             order.save()
