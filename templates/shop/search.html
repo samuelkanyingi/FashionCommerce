@@ -107,6 +107,21 @@
     </div>
     <div class="product-info">
         <h3 class="product-title">{{ product.name }}</h3>
+        <div class="product-rating" data-rating="{{ product.get_avg_rating }}" data-reviews="{{ product.get_review_count }}">
+          {% with avg=product.get_avg_rating count=product.get_review_count %}
+            {% if count > 0 %}
+              {% if avg >= 1 %}<i class="fa fa-star"></i>{% elif avg >= 0.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+              {% if avg >= 2 %}<i class="fa fa-star"></i>{% elif avg >= 1.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+              {% if avg >= 3 %}<i class="fa fa-star"></i>{% elif avg >= 2.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+              {% if avg >= 4 %}<i class="fa fa-star"></i>{% elif avg >= 3.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+              {% if avg >= 5 %}<i class="fa fa-star"></i>{% elif avg >= 4.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+              <span>({{ avg }})</span>
+            {% else %}
+              <i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i>
+              <span>(0)</span>
+            {% endif %}
+          {% endwith %}
+        </div>
         <div class="product-price">
             <span class="current-price">KES {{ product.price }}</span>
         </div>

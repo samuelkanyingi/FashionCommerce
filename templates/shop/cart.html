@@ -490,11 +490,11 @@
                         {% endif %}
                     </div>
                     <div class="cart-item-quantity">
-                        <button class="qty-btn" hx-post="{% url 'update_cart' %}" hx-target="#cart-items-list" hx-swap="innerHTML" hx-vals='{"action":"decrease", "name": "{{ item.name }}"}' hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                        <button class="qty-btn" hx-post="{% url 'update_cart' %}" hx-target="#cart-items-list" hx-swap="innerHTML" hx-vals='{"action":"decrease", "name": "{{ item.name }}"}' hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' >
                             <i class="fa fa-minus"></i>
                         </button>
                         <span class="qty-value">{{ item.quantity }}</span>
-                        <button class="qty-btn" hx-post="{% url 'update_cart' %}" hx-target="#cart-items-list" hx-swap="innerHTML" hx-vals='{"action":"increase", "name": "{{ item.name }}"}' hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                        <button class="qty-btn" hx-post="{% url 'update_cart' %}" hx-target="#cart-items-list" hx-swap="innerHTML" hx-vals='{"action":"increase", "name": "{{ item.name }}"}' hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'  >
                             <i class="fa fa-plus"></i>
                         </button>
                     </div>
@@ -537,7 +537,7 @@
             </div>
 
             {% if order %}
-            <div class="order-number">
+            <div id="order-number" class="order-number">
                 <span>Order Number:</span>
                 <strong>{{ order.tracking_number }}</strong>
             </div>
@@ -548,13 +548,15 @@
             {% endif %}
             {% endif %}
 
-            <div class="summary-row">
-                <span>Subtotal</span>
-                <span>KES {{ total }}</span>
-            </div>
-            <div class="summary-row total">
-                <span>Total</span>
-                <span>KES {{ total }}</span>
+            <div id="order-summary-update">
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span>KES {{ total }}</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span>KES {{ total }}</span>
+                </div>
             </div>
 
             <button class="checkout-btn" @click="open = true">
@@ -1199,6 +1201,7 @@ function checkoutApp() {
         }
     }
 }
+
 </script>
 
 <!-- FOOTER -->

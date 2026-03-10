@@ -1,0 +1,65 @@
+<!-- Quick View Sidebar -->
+<div id="quick-view-sidebar" class="quick-view-sidebar">
+    <div class="quick-view-overlay" onclick="closeQuickView()"></div>
+    <div class="quick-view-content">
+        <button class="quick-view-close" onclick="closeQuickView()">
+            <i class="fa fa-times"></i>
+        </button>
+
+        <div class="quick-view-body">
+            <div class="quick-view-image-section">
+                <img id="qv-product-image" src="" alt="Product" class="qv-product-img">
+            </div>
+
+            <div class="quick-view-details-section">
+                <h2 id="qv-product-name" class="qv-product-name"></h2>
+                <div class="qv-rating">
+                    <i class="fa fa-star"></i>
+                    <i class="fa fa-star"></i>
+                    <i class="fa fa-star"></i>
+                    <i class="fa fa-star"></i>
+                    <i class="fa fa-star-half-o"></i>
+                    <span>(4.5)</span>
+                </div>
+                <div class="qv-price">
+                    <span id="qv-product-price" class="qv-current-price"></span>
+                    <span id="qv-original-price" class="qv-original-price"></span>
+                </div>
+
+                <div class="qv-description">
+                    <p id="qv-product-desc"></p>
+                </div>
+
+                <div class="qv-size-section">
+                    <h4>Select Size</h4>
+                    <div id="qv-sizes" class="qv-sizes-container">
+                        <!-- Sizes will be dynamically added here -->
+                    </div>
+                    <input type="hidden" id="qv-selected-size" value="">
+                </div>
+
+                <div class="qv-stock-info">
+                    <i class="fa fa-check-circle"></i>
+                    <span id="qv-stock-text">In stock</span>
+                </div>
+
+                <form id="qv-add-to-cart-form" class="qv-add-to-cart-form">
+                    <input type="hidden" name="product_id" id="qv-product-id" value="">
+                    <input type="hidden" name="size" id="qv-size-input" value="">
+                    <button type="submit" class="qv-add-cart-btn">
+                        <i class="fa fa-shopping-cart"></i> Add to Cart
+                    </button>
+                </form>
+
+                <div class="qv-actions">
+                    <button class="qv-action-btn" onclick="toggleWishlist(this)">
+                        <i class="fa fa-heart-o"></i> Add to Wishlist
+                    </button>
+                    <a href="#" class="qv-action-btn">
+                        <i class="fa fa-share-alt"></i> Share
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import models
 from django.conf import settings
-from .models import Product, Order, OrderItem, Receipt, Report, calculate_delivery_fee
+from .models import Product, Order, OrderItem, Receipt, Report, Review, calculate_delivery_fee
 from .utils.mpesa import get_mpesa_access_token
 from django.template.loader import render_to_string
 from io import BytesIO
@@ -375,31 +375,60 @@ def add_to_cart(request):
 
         product_id = request.POST.get("product_id")
         size = request.POST.get("size", "")
+        quantity = int(request.POST.get("quantity", 1))
+        should_redirect = request.POST.get("redirect") == "true"
 
         if product_id:
             try:
                 product = Product.objects.get(id=product_id)
-                item = {
-                    "name": product.name,
-                    "price": int(product.price),
-                    "image": product.image.url if product.image else "",
-                    "quantity": 1,
-                    "size": size,
-                    "description": product.description,
-                }
+                
+                # Check if item already exists in cart with same size
+                found = False
+                for item in cart:
+                    if item.get("product_id") == str(product_id) and item.get("size") == size:
+                        item["quantity"] = item.get("quantity", 0) + quantity
+                        found = True
+                        break
+                
+                if not found:
+                    item = {
+                        "product_id": str(product_id),
+                        "name": product.name,
+                        "price": int(product.price),
+                        "image": product.image.url if product.image else "",
+                        "quantity": quantity,
+                        "size": size,
+                        "description": product.description,
+                    }
+                    cart.append(item)
             except Product.DoesNotExist:
                 return HttpResponse("Product not found", status=404)
         else:
-            item = {
-                "name": request.POST.get("name"),
-                "price": int(request.POST.get("price", 0)),
-                "image": request.POST.get("image"),
-                "quantity": 1,
-                "size": size,
-            }
+            # Fallback for old implementation if needed
+            name = request.POST.get("name")
+            found = False
+            for item in cart:
+                if item["name"] == name and item.get("size") == size:
+                    item["quantity"] = item.get("quantity", 0) + quantity
+                    found = True
+                    break
+            
+            if not found:
+                item = {
+                    "name": name,
+                    "price": int(request.POST.get("price", 0)),
+                    "image": request.POST.get("image"),
+                    "quantity": quantity,
+                    "size": size,
+                }
+                cart.append(item)
 
-        cart.append(item)
         request.session["cart"] = cart
+        
+        if should_redirect:
+            response = HttpResponse("")
+            response["HX-Redirect"] = reverse("cart")
+            return response
 
         return HttpResponse(f'''
             <a href="{reverse("cart")}" id="cart-icon" style="position: relative; display: inline-block; font-size: 20px;">
@@ -774,6 +803,57 @@ The FashionHub Team
         print(f"Callback error: {e}")
 
     return HttpResponse("OK")
+
+
+def product_detail(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    cart = request.session.get("cart", [])
+    
+    # Get related products (same category, excluding current product)
+    related_products = Product.objects.filter(
+        category=product.category
+    ).exclude(id=product.id)[:4]
+    
+    # Get reviews from database
+    reviews = Review.objects.filter(product=product).order_by("-created_at")
+    
+    # Calculate average rating
+    avg_rating = 0
+    if reviews.exists():
+        avg_rating = round(sum(r.rating for r in reviews) / reviews.count(), 1)
+    
+    return render(request, "shop/product_detail.html", {
+        "product": product,
+        "cart": cart,
+        "related_products": related_products,
+        "reviews": reviews,
+        "avg_rating": avg_rating,
+        "review_count": reviews.count(),
+    })
+
+
+@require_POST
+def submit_review(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    
+    name = request.POST.get("name", "").strip()
+    rating = int(request.POST.get("rating", 5))
+    comment = request.POST.get("comment", "").strip()
+    
+    if not name or not comment:
+        return JsonResponse({"success": False, "error": "Please fill in all fields"})
+    
+    if rating < 1 or rating > 5:
+        rating = 5
+    
+    Review.objects.create(
+        product=product,
+        name=name,
+        rating=rating,
+        comment=comment
+    )
+    
+    return JsonResponse({"success": True})
 
 
 def featured_products(request):

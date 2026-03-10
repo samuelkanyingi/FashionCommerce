@@ -91,6 +91,15 @@ class Product(models.Model):
     subcategory = models.CharField(max_length=50)
     stock = models.IntegerField(default=0)
 
+    def get_avg_rating(self):
+        reviews = self.reviews.all()
+        if not reviews.exists():
+            return 0
+        return round(sum(r.rating for r in reviews) / reviews.count(), 1)
+
+    def get_review_count(self):
+        return self.reviews.count()
+
     def __str__(self):
         return self.name
 
@@ -185,3 +194,14 @@ class Report(models.Model):
 
     def __str__(self):
         return f"{self.get_report_type_display()} - {self.generated_at.strftime('%Y-%m-%d')}"
+
+
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
+    name = models.CharField(max_length=100)
+    rating = models.IntegerField(default=5)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review by {self.name} for {self.product.name}"

@@ -1,0 +1,232 @@
+{% extends "shop/base.html" %}
+{% load static %}
+
+{% block title %}{{ product.name }} - FashionHub{% endblock %}
+
+{% block content %}
+<style>
+    .product-detail-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 50px; }
+    .product-detail-image img { width: 100%; height: auto; border-radius: 8px; object-fit: cover; }
+    .product-detail-info h1 { font-size: 28px; margin-bottom: 10px; color: #333; }
+    .product-detail-price { font-size: 24px; font-weight: bold; color: #04aa6d; margin-bottom: 20px; }
+    .product-detail-price .original { font-size: 18px; color: #999; text-decoration: line-through; margin-left: 10px; }
+    .size-option { width: 50px; height: 50px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+    .size-option.selected { background: #04aa6d; color: white; border-color: #04aa6d; }
+    .quantity-controls { display: flex; align-items: center; border: 2px solid #ddd; border-radius: 6px; overflow: hidden; width: fit-content; }
+    .quantity-controls button { width: 40px; height: 40px; border: none; background: #f5f5f5; cursor: pointer; font-size: 18px; }
+    .quantity-controls input { width: 50px; height: 40px; border: none; text-align: center; font-size: 16px; }
+    .add-to-cart-btn { background: #04aa6d; color: white; border: none; padding: 15px 40px; font-size: 16px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-top: 20px; }
+    .review-card { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
+    .review-rating { color: #ffc107; margin-bottom: 10px; }
+    .related-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .product-card-modern { border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+    .product-image-wrapper img { width: 100%; height: 200px; object-fit: cover; }
+    .product-info { padding: 15px; }
+    @media (max-width: 768px) { .product-detail-container { grid-template-columns: 1fr; } .related-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+
+<div class="product-detail-container">
+    <div class="product-detail-image">
+        {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}" />
+        {% else %}
+        <img src="{% static 'images/placeholder.jpg' %}" alt="{{ product.name }}" />
+        {% endif %}
+    </div>
+    
+    <div class="product-detail-info">
+        <h1>{{ product.name }}</h1>
+        <div class="product-detail-price">
+            KES {{ product.price }}
+            <span class="original">KES {{ product.price|add:500 }}</span>
+        </div>
+        
+        <div class="product-rating">
+            {% if review_count > 0 %}
+                {% if avg_rating >= 1 %}<i class="fa fa-star"></i>{% elif avg_rating >= 0.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                {% if avg_rating >= 2 %}<i class="fa fa-star"></i>{% elif avg_rating >= 1.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                {% if avg_rating >= 3 %}<i class="fa fa-star"></i>{% elif avg_rating >= 2.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                {% if avg_rating >= 4 %}<i class="fa fa-star"></i>{% elif avg_rating >= 3.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                {% if avg_rating >= 5 %}<i class="fa fa-star"></i>{% elif avg_rating >= 4.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                <span>({{ avg_rating }})</span>
+            {% else %}
+                <i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i>
+                <span>(0)</span>
+            {% endif %}
+        </div>
+        
+        <div class="size-selector">
+            <h4>Select Size</h4>
+            <div class="size-options" id="sizeOptions">
+                {% if product.subcategory == 'shoes' %}
+                    {% if product.category == 'women' %}
+                    <button type="button" class="size-option" data-size="35">35</button><button type="button" class="size-option" data-size="36">36</button><button type="button" class="size-option" data-size="37">37</button><button type="button" class="size-option" data-size="38">38</button><button type="button" class="size-option" data-size="39">39</button><button type="button" class="size-option" data-size="40">40</button>
+                    {% else %}
+                    <button type="button" class="size-option" data-size="38">38</button><button type="button" class="size-option" data-size="39">39</button><button type="button" class="size-option" data-size="40">40</button><button type="button" class="size-option" data-size="41">41</button><button type="button" class="size-option" data-size="42">42</button><button type="button" class="size-option" data-size="43">43</button>
+                    {% endif %}
+                {% else %}
+                    {% if product.category == 'women' %}
+                    <button type="button" class="size-option" data-size="XS">XS</button>
+                    {% endif %}
+                    <button type="button" class="size-option" data-size="S">S</button><button type="button" class="size-option" data-size="M">M</button><button type="button" class="size-option" data-size="L">L</button><button type="button" class="size-option" data-size="XL">XL</button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="quantity-selector">
+            <h4>Quantity</h4>
+            <div class="quantity-controls">
+                <button type="button" id="qtyMinus">-</button>
+                <input type="number" id="qtyDisplay" value="1" min="1" readonly>
+                <button type="button" id="qtyPlus">+</button>
+            </div>
+        </div>
+        
+        <form id="mainAddToCartForm" method="POST" hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="product_id" value="{{ product.id }}">
+            <input type="hidden" name="size" id="selectedSize" value="">
+            <input type="hidden" name="quantity" id="selectedQty" value="1">
+            <input type="hidden" name="redirect" value="true">
+            <button type="submit" class="add-to-cart-btn">
+                <i class="fa fa-shopping-cart"></i> Add to Cart
+            </button>
+        </form>
+        
+        <div class="product-description">
+            <h4>Description</h4>
+            <p>{{ product.description|default:"High quality fashion product from FashionHub." }}</p>
+        </div>
+    </div>
+</div>
+
+<div x-data="{ reviewsOpen: true }" class="reviews-section">
+    <button @click="reviewsOpen = !reviewsOpen" style="background: none; border: none; width: 100%; text-align: left; cursor: pointer; padding: 0; margin-bottom: 20px;">
+        <h2 style="margin: 0; display: inline-block;">Customer Reviews</h2>
+        <i :class="reviewsOpen ? 'fa fa-chevron-up' : 'fa fa-chevron-down'" style="float: right; margin-top: 10px; color: #666;"></i>
+    </button>
+    
+    <div x-show="reviewsOpen" x-collapse x-cloak>
+    <div x-data="{ open: false, rating: 0, hoverRating: 0, name: '', comment: '', loading: false, success: false, error: false, errorMessage: '', async submitReview() { if (this.rating === 0) { this.error = true; this.errorMessage = 'Please select a rating'; return; } this.loading = true; this.error = false; this.success = false; const formData = new FormData(); formData.append('rating', this.rating); formData.append('name', this.name); formData.append('comment', this.comment); formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value); try { const response = await fetch('{% url 'submit_review' product.id %}', { method: 'POST', body: formData }); const data = await response.json(); if (data.success) { this.success = true; this.name = ''; this.comment = ''; this.rating = 0; setTimeout(() => { window.location.reload(); }, 1500); } else { this.error = true; this.errorMessage = data.error || 'Something went wrong'; } } catch (e) { this.error = true; this.errorMessage = 'Network error.'; } this.loading = false; } }" style="margin-bottom: 30px;">
+        <button @click="open = !open" style="background: #04aa6d; color: white; border: none; padding: 12px 25px; font-size: 16px; font-weight: 600; border-radius: 6px; cursor: pointer;">Write a Review</button>
+        <div x-show="open" x-collapse x-cloak style="background: #f9f9f9; padding: 25px; border-radius: 8px; margin-top: 15px;">
+            <form @submit.prevent="submitReview">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Your Rating</label>
+                    <div class="star-rating" style="font-size: 24px; cursor: pointer;">
+                        <template x-for="i in 5">
+                            <span @click="rating = i" @mouseover="hoverRating = i" @mouseleave="hoverRating = 0" :style="(hoverRating || rating) >= i ? 'color: #ffc107' : 'color: #ddd'">&#9733;</span>
+                        </template>
+                    </div>
+                </div>
+                <div style="margin-bottom: 15px;"><input type="text" x-model="name" placeholder="Your Name" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;"></div>
+                <div style="margin-bottom: 15px;"><textarea x-model="comment" placeholder="Your Review" required rows="4" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;"></textarea></div>
+                <button type="submit" :disabled="loading" style="background: #04aa6d; color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer;">Submit Review</button>
+            </form>
+        </div>
+    </div>
+    
+    {% for review in reviews %}
+    <div class="review-card">
+        <div class="review-header"><span class="review-name">{{ review.name }}</span><span class="review-date">{{ review.created_at|date:"M d, Y" }}</span></div>
+        <div class="review-rating">
+            {% if review.rating >= 1 %}<i class="fa fa-star"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+            {% if review.rating >= 2 %}<i class="fa fa-star"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+            {% if review.rating >= 3 %}<i class="fa fa-star"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+            {% if review.rating >= 4 %}<i class="fa fa-star"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+            {% if review.rating >= 5 %}<i class="fa fa-star"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+        </div>
+        <p class="review-comment">{{ review.comment }}</p>
+    </div>
+    {% empty %}
+    <p style="color: #666; font-style: italic;">No reviews yet.</p>
+    {% endfor %}
+    </div>
+</div>
+
+{% if related_products %}
+<div class="related-products">
+    <h2>Related Products</h2>
+    <div class="related-grid">
+        {% for related in related_products %}
+        <div class="product-card-modern">
+            <div class="product-image-wrapper">
+                <a href="{% url 'product_detail' related.id %}">{% if related.image %}<img src="{{ related.image.url }}" alt="{{ related.name }}" />{% endif %}</a>
+                <button class="quick-view-bottom-btn" @click="document.querySelector('#quick-view-sidebar').setAttribute('data-product-id', '{{ related.id }}'); document.querySelector('#quick-view-sidebar').classList.add('open')">Quick View</button>
+            </div>
+            <div class="product-info">
+                <h3 class="product-title">{{ related.name }}</h3>
+                <div class="product-rating" data-rating="{{ related.get_avg_rating }}" data-reviews="{{ related.get_review_count }}">
+                    {% with ravg=related.get_avg_rating rcount=related.get_review_count %}
+                    {% if rcount > 0 %}
+                        {% if ravg >= 1 %}<i class="fa fa-star"></i>{% elif ravg >= 0.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                        {% if ravg >= 2 %}<i class="fa fa-star"></i>{% elif ravg >= 1.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                        {% if ravg >= 3 %}<i class="fa fa-star"></i>{% elif ravg >= 2.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                        {% if ravg >= 4 %}<i class="fa fa-star"></i>{% elif ravg >= 3.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                        {% if ravg >= 5 %}<i class="fa fa-star"></i>{% elif ravg >= 4.5 %}<i class="fa fa-star-half-o"></i>{% else %}<i class="fa fa-star-o"></i>{% endif %}
+                    {% else %}
+                        <i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                <div class="product-price"><span class="current-price">KES {{ related.price }}</span></div>
+                <input type="hidden" name="product_id" value="{{ related.id }}">
+                <select name="size" class="size-select" style="display:none;">
+                    {% if related.subcategory == 'shoes' %}<option value="40">40</option>{% else %}<option value="M">M</option>{% endif %}
+                </select>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+    document.querySelectorAll('.size-option').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.size-option').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            document.getElementById('selectedSize').value = this.dataset.size;
+        });
+    });
+    document.getElementById('qtyPlus').addEventListener('click', () => {
+        let val = parseInt(document.getElementById('qtyDisplay').value);
+        document.getElementById('qtyDisplay').value = val + 1;
+        document.getElementById('selectedQty').value = val + 1;
+    });
+    document.getElementById('qtyMinus').addEventListener('click', () => {
+        let val = parseInt(document.getElementById('qtyDisplay').value);
+        if (val > 1) {
+            document.getElementById('qtyDisplay').value = val - 1;
+            document.getElementById('selectedQty').value = val - 1;
+        }
+    });
+</script>
+
+<!-- Quick View Sidebar -->
+<div id="quick-view-sidebar" class="quick-view-sidebar">
+  <div class="quick-view-overlay" @click="document.querySelector('#quick-view-sidebar').classList.remove('open')"></div>
+  <div class="quick-view-panel">
+    <button class="qv-close-btn" @click="document.querySelector('#quick-view-sidebar').classList.remove('open')"><i class="fa fa-times"></i></button>
+    <div class="qv-content">
+      <div class="qv-image"><img id="qv-product-image" src="" alt="Product" /></div>
+      <div class="qv-details">
+        <h2 id="qv-product-name"></h2>
+        <div class="qv-rating"></div>
+        <div class="qv-price"><span id="qv-current-price" class="qv-current-price"></span></div>
+        <p id="qv-description" class="qv-description"></p>
+        <div class="qv-sizes"><h4>Select Size</h4><div id="qv-sizes-container" class="qv-size-options"></div></div>
+        <div class="qv-quantity">
+          <h4>Quantity</h4>
+          <div class="quantity-controls"><button type="button" class="qty-btn minus" id="qv-qty-minus">-</button><input type="number" id="qv-qty-display" value="1" min="1" readonly><button type="button" class="qty-btn plus" id="qv-qty-plus">+</button></div>
+        </div>
+        <form id="qv-add-form" hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML">
+          <input type="hidden" name="product_id" id="qv-product-id-input">
+          <input type="hidden" name="size" id="qv-size-input"><input type="hidden" name="quantity" id="qv-qty-hidden" value="1">
+          <button type="submit" class="qv-add-to-cart-btn">Add to Cart</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
