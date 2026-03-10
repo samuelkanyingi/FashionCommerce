@@ -809,10 +809,21 @@ def product_detail(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     cart = request.session.get("cart", [])
     
-    # Get related products (same category, excluding current product)
+    # Get related products (same subcategory first, then same category, excluding current product)
     related_products = Product.objects.filter(
-        category=product.category
+        subcategory__iexact=product.subcategory,
+        category__iexact=product.category
     ).exclude(id=product.id)[:4]
+    
+    # If not enough in same subcategory, pad with items from same category
+    if related_products.count() < 4:
+        additional_count = 4 - related_products.count()
+        additional_products = Product.objects.filter(
+            category__iexact=product.category
+        ).exclude(
+            id__in=[product.id] + [p.id for p in related_products]
+        )[:additional_count]
+        related_products = list(related_products) + list(additional_products)
     
     # Get reviews from database
     reviews = Review.objects.filter(product=product).order_by("-created_at")
