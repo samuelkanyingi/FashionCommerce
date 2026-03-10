@@ -9,15 +9,10 @@
     <button
       class="quick-view-bottom-btn"
       title="Quick View"
-      @click="document.querySelector('#quick-view-sidebar').setAttribute('data-product-id', '{{ product.id }}'); document.querySelector('#quick-view-sidebar').classList.add('open')"
+      @click="$dispatch('open-quick-view', { card: $el.closest('.product-card-modern') })"
     >
       Quick View
     </button>
-    <!-- {% if forloop.counter <= 3 %}
-    <span class="product-badge new">New</span>
-    {% elif product.price < 3000 %}
-    <span class="product-badge sale">Sale</span>
-    {% endif %} -->
   </div>
   <div class="product-info">
     <h3 class="product-title">{{ product.name }}</h3>
@@ -63,9 +58,6 @@
           <option value="S">S</option><option value="M">M</option><option value="L">L</option><option value="XL">XL</option>
         {% endif %}
       </select>
-      <button type="submit" class="add-cart-btn" style="display: none;">
-        <i class="fa fa-shopping-cart"></i> Add to Cart
-      </button>
     </form>
   </div>
 </div>
@@ -77,44 +69,92 @@
 </div>
 {% endfor %}
 
-<!-- Quick View Sidebar -->
-<div id="quick-view-sidebar" class="quick-view-sidebar">
-  <div class="quick-view-overlay" @click="document.querySelector('#quick-view-sidebar').classList.remove('open')"></div>
+<!-- Quick View Sidebar — Alpine owns this entirely -->
+<div
+  x-data="{
+    open: false,
+    product: { id:'', name:'', price:'', originalPrice:'', image:'', sizes:[], rating:0, reviews:0 },
+    selectedSize: '',
+    qty: 1,
+    openWith(card) {
+      this.qty = 1;
+      this.selectedSize = '';
+      this.product = {
+        id:            card.querySelector('input[name=product_id]').value,
+        name:          card.querySelector('.product-title').textContent.trim(),
+        price:         card.querySelector('.current-price').textContent.trim(),
+        originalPrice: card.querySelector('.original-price').textContent.trim(),
+        image:         card.querySelector('img').src,
+        rating:        parseFloat(card.querySelector('.product-rating').dataset.rating) || 0,
+        reviews:       parseInt(card.querySelector('.product-rating').dataset.reviews) || 0,
+        sizes:         Array.from(card.querySelectorAll('select[name=size] option'))
+                           .map(o => o.value).filter(v => v !== '')
+      };
+      this.open = true;
+    },
+    starClass(i) {
+      if (this.product.reviews === 0) return 'fa-star-o';
+      if (i <= Math.floor(this.product.rating)) return 'fa-star';
+      if (i === Math.floor(this.product.rating) + 1 && this.product.rating % 1 >= 0.5) return 'fa-star-half-o';
+      return 'fa-star-o';
+    }
+  }"
+  @open-quick-view.window="openWith($event.detail.card)"
+  class="quick-view-sidebar"
+  :class="{ open: open }"
+>
+  <div class="quick-view-overlay" @click="open = false"></div>
   <div class="quick-view-panel">
-    <button class="qv-close-btn" @click="document.querySelector('#quick-view-sidebar').classList.remove('open')">
+    <button class="qv-close-btn" @click="open = false">
       <i class="fa fa-times"></i>
     </button>
     <div class="qv-content">
       <div class="qv-image">
-        <img id="qv-product-image" src="" alt="Product" />
+        <img :src="product.image" :alt="product.name" />
       </div>
       <div class="qv-details">
-        <h2 id="qv-product-name"></h2>
+        <h2 x-text="product.name"></h2>
         <div class="qv-rating">
-          <i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i>
-          <span>(0)</span>
+          <template x-for="i in [1,2,3,4,5]" :key="i">
+            <i class="fa" :class="starClass(i)"></i>
+          </template>
+          <span x-text="'(' + (product.reviews > 0 ? product.rating : 0) + ')'"></span>
         </div>
         <div class="qv-price">
-          <span id="qv-current-price" class="qv-current-price"></span>
-          <span id="qv-original-price" class="qv-original-price"></span>
+          <span class="qv-current-price" x-text="product.price"></span>
+          <span class="qv-original-price" x-text="product.originalPrice"></span>
         </div>
-        <p id="qv-description" class="qv-description"></p>
         <div class="qv-sizes">
           <h4>Select Size</h4>
-          <div id="qv-sizes-container" class="qv-size-options"></div>
+          <div class="qv-size-options">
+            <template x-for="size in product.sizes" :key="size">
+              <button
+                type="button"
+                class="size-option"
+                :class="{ selected: selectedSize === size }"
+                @click="selectedSize = size"
+                x-text="size"
+              ></button>
+            </template>
+          </div>
         </div>
         <div class="qv-quantity">
           <h4>Quantity</h4>
           <div class="quantity-controls">
-            <button type="button" class="qty-btn minus" id="qv-qty-minus">-</button>
-            <input type="number" id="qv-qty-display" value="1" min="1" readonly>
-            <button type="button" class="qty-btn plus" id="qv-qty-plus">+</button>
+            <button type="button" class="qty-btn minus" @click="qty = Math.max(1, qty - 1)">-</button>
+            <input type="number" :value="qty" min="1" readonly>
+            <button type="button" class="qty-btn plus" @click="qty++">+</button>
           </div>
         </div>
-        <form id="qv-add-form" hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-          <input type="hidden" name="product_id" id="qv-product-id-input">
-          <input type="hidden" name="size" id="qv-size-input">
-          <input type="hidden" name="quantity" id="qv-qty-hidden" value="1">
+        <form
+          hx-post="{% url 'add_to_cart' %}"
+          hx-target="#cart-icon"
+          hx-swap="outerHTML"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        >
+          <input type="hidden" name="product_id" :value="product.id">
+          <input type="hidden" name="size" :value="selectedSize">
+          <input type="hidden" name="quantity" :value="qty">
           <input type="hidden" name="redirect" value="true">
           <button type="submit" class="qv-add-to-cart-btn">
             <i class="fa fa-shopping-cart"></i> Add to Cart
@@ -124,94 +164,3 @@
     </div>
   </div>
 </div>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const quickViewBtn = document.querySelectorAll(".quick-view-bottom-btn");
-    const sidebar = document.getElementById("quick-view-sidebar");
-    const qtyDisplay = document.getElementById("qv-qty-display");
-    const qtyHidden = document.getElementById("qv-qty-hidden");
-    const sizeInput = document.getElementById("qv-size-input");
-    const productIdInput = document.getElementById("qv-product-id-input");
-
-    // Quantity Controls
-    document.getElementById("qv-qty-plus")?.addEventListener("click", function() {
-      let val = parseInt(qtyDisplay.value);
-      qtyDisplay.value = val + 1;
-      qtyHidden.value = val + 1;
-    });
-
-    document.getElementById("qv-qty-minus")?.addEventListener("click", function() {
-      let val = parseInt(qtyDisplay.value);
-      if (val > 1) {
-        qtyDisplay.value = val - 1;
-        qtyHidden.value = val - 1;
-      }
-    });
-
-    quickViewBtn.forEach((btn) => {
-      btn.addEventListener("click", function () {
-        const productCard = this.closest(".product-card-modern");
-        const productId = productCard.querySelector('input[name="product_id"]').value;
-        const name = productCard.querySelector(".product-title").textContent;
-        const price = productCard.querySelector(".current-price").textContent;
-        const originalPrice = productCard.querySelector(".original-price").textContent;
-        const image = productCard.querySelector("img").src;
-        const description = productCard.querySelector(".product-info p")?.textContent || "High quality product";
-
-        qtyDisplay.value = 1;
-        qtyHidden.value = 1;
-        sizeInput.value = "";
-        productIdInput.value = productId;
-
-        const sizeSelect = productCard.querySelector('select[name="size"]');
-        const options = Array.from(sizeSelect.options).map((opt) => opt.value).filter((val) => val !== "");
-
-        document.getElementById("qv-product-name").textContent = name;
-        document.getElementById("qv-current-price").textContent = price;
-        document.getElementById("qv-original-price").textContent = originalPrice;
-        document.getElementById("qv-description").textContent = description;
-        document.getElementById("qv-product-image").src = image;
-        document.getElementById("qv-product-image").alt = name;
-
-        const ratingContainer = document.querySelector(".qv-rating");
-        const productRatingEl = productCard.querySelector(".product-rating");
-        const rating = parseFloat(productRatingEl.dataset.rating) || 0;
-        const reviews = parseInt(productRatingEl.dataset.reviews) || 0;
-        
-        let starsHtml = "";
-        if (reviews > 0) {
-          for (let i = 1; i <= 5; i++) {
-            if (i <= Math.floor(rating)) {
-              starsHtml += '<i class="fa fa-star"></i> ';
-            } else if (i === Math.floor(rating) + 1 && rating % 1 >= 0.5) {
-              starsHtml += '<i class="fa fa-star-half-o"></i> ';
-            } else {
-              starsHtml += '<i class="fa fa-star-o"></i> ';
-            }
-          }
-          starsHtml += `<span>(${rating})</span>`;
-        } else {
-          starsHtml = '<i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i><i class="fa fa-star-o"></i> <span>(0)</span>';
-        }
-        ratingContainer.innerHTML = starsHtml;
-
-        const sizesContainer = document.getElementById("qv-sizes-container");
-        sizesContainer.innerHTML = "";
-        options.forEach((size) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.textContent = size;
-          button.className = "size-option";
-          button.addEventListener("click", function () {
-            document.querySelectorAll(".size-option").forEach((btn) => btn.classList.remove("selected"));
-            this.classList.add("selected");
-            sizeInput.value = size;
-          });
-          sizesContainer.appendChild(button);
-        });
-        sidebar.classList.add("open");
-      });
-    });
-  });
-</script>
