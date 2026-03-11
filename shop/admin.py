@@ -64,7 +64,8 @@ class ReceiptAdmin(admin.ModelAdmin):
 class ReportAdmin(admin.ModelAdmin):
     list_display = ("title", "report_type", "generated_at")
     list_filter = ("report_type",)
-    readonly_fields = ("report_type", "title", "generated_at", "data")
+    #readonly_fields = ("report_type", "title", "generated_at", "data")
+    readonly_fields = ("generated_at",)
 
 
 admin.site.site_header = "FashionHub Administration"

@@ -140,7 +140,8 @@ class Order(models.Model):
         return self.get_total_amount() + (self.delivery_fee or 0)
 
     def __str__(self):
-        return f"Order {self.tracking_number} - {self.buyer.username}"
+        #return f"Order {self.tracking_number} - {self.buyer.username}"
+        return f"Order {self.tracking_number} - {self.buyer.username if self.buyer else self.email}"
 
 
 class OrderItem(models.Model):
@@ -155,7 +156,11 @@ class OrderItem(models.Model):
         size_info = f" - Size {self.size}" if self.size else ""
         return f"{self.quantity}x {self.product.name}{size_info} - Order {self.order.tracking_number}"
 
+    # def get_total(self):
+    #     return self.quantity * self.price
     def get_total(self):
+        if self.quantity is None or self.price is None:
+            return 0
         return self.quantity * self.price
 
 
