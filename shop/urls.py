@@ -65,6 +65,7 @@ urlpatterns = [
     path("update-shipping/", views.update_shipping, name="update_shipping"),
     path("my-receipts/", views.my_receipts, name="my_receipts"),
     path("reports/", views.reports, name="reports"),
+    path("reports/generate/", views.generate_all_reports, name="generate_all_reports"),
     path("reports/<int:report_id>/", views.report_detail, name="report_detail"),
     path("track-order/", views.track_order, name="track_order"),
 ]

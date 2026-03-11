@@ -1148,6 +1148,103 @@ def my_receipts(request):
     return render(request, "shop/my_receipts.html", {"orders": orders})
 
 
+@login_required
+def generate_all_reports(request):
+    """Generate 5 system reports with real data"""
+    if not request.user.is_staff:
+        return redirect("index")
+
+    # 1. Sales Report
+    paid_orders = Order.objects.filter(status="PAID").order_by("-created_at")
+    total_revenue = sum(o.get_grand_total() for o in paid_orders)
+    sales_data = {
+        "total_orders": paid_orders.count(),
+        "total_revenue": total_revenue,
+        "items": [
+            {
+                "tracking": o.tracking_number,
+                "amount": o.get_grand_total(),
+                "date": o.created_at.strftime("%Y-%m-%d"),
+            }
+            for o in paid_orders[:20]
+        ],
+    }
+    Report.objects.create(
+        report_type="sales",
+        title=f"Sales Summary - {datetime.datetime.now().strftime('%b %d')}",
+        data=sales_data,
+    )
+
+    # 2. Inventory Report
+    products = Product.objects.all().order_by("stock")
+    inventory_data = {
+        "total_products": products.count(),
+        "low_stock": products.filter(stock__lt=10).count(),
+        "items": [
+            {"name": p.name, "stock": p.stock, "price": p.price} for p in products[:20]
+        ],
+    }
+    Report.objects.create(
+        report_type="inventory",
+        title=f"Stock Alert - {datetime.datetime.now().strftime('%b %d')}",
+        data=inventory_data,
+    )
+
+    # 3. Orders Report
+    all_orders = Order.objects.all().order_by("-created_at")
+    orders_data = {
+        "total_orders": all_orders.count(),
+        "pending": all_orders.filter(status="PENDING").count(),
+        "paid": all_orders.filter(status="PAID").count(),
+        "items": [
+            {"tracking": o.tracking_number, "status": o.status, "total": o.get_grand_total()}
+            for o in all_orders[:20]
+        ],
+    }
+    Report.objects.create(
+        report_type="orders",
+        title=f"Order Status - {datetime.datetime.now().strftime('%b %d')}",
+        data=orders_data,
+    )
+
+    # 4. Customer Report
+    customers = User.objects.annotate(order_count=models.Count("orders")).order_by("-order_count")
+    customers_data = {
+        "total_customers": User.objects.count(),
+        "items": [
+            {"username": u.username, "orders": u.order_count, "email": u.email}
+            for u in customers[:20]
+        ],
+    }
+    Report.objects.create(
+        report_type="customers",
+        title=f"Customer Leaders - {datetime.datetime.now().strftime('%b %d')}",
+        data=customers_data,
+    )
+
+    # 5. Product Report (Rating Leaders)
+    all_products = list(Product.objects.all())
+    all_products.sort(key=lambda p: p.get_avg_rating(), reverse=True)
+    
+    product_data = {
+        "items": [
+            {
+                "name": p.name,
+                "rating": p.get_avg_rating(),
+                "reviews": p.get_review_count(),
+            }
+            for p in all_products[:20]
+        ]
+    }
+    Report.objects.create(
+        report_type="products",
+        title=f"Top Rated Products - {datetime.datetime.now().strftime('%b %d')}",
+        data=product_data,
+    )
+
+    return redirect("reports")
+
+
 def reports(request):
     """View all generated reports"""
     cart = request.session.get("cart", [])
