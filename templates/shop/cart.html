@@ -376,7 +376,7 @@
 
 <!-- TOP PROMO BAR -->
 <div class="promo-bar">
-    <p><i class="fa fa-truck"></i> Enjoy free delivery on orders above KES 5,000! | <i class="fa fa-gift"></i> New customers get 3 free deliveries!</p>
+    <p><i class="fa fa-truck"></i> Enjoy free delivery on orders above KES 20,000! ! below 1km distance</p>
 </div>
 
 <!-- HEADER -->
@@ -515,17 +515,16 @@
                     <a href="{{ continue_shopping_url }}" class="continue-shopping-btn">Continue Shopping</a>
                 </div>
                 {% endfor %}
+                
+                {% if cart %}
+                <a href="{{ continue_shopping_url }}" class="back-to-shop">
+                    <i class="fa fa-arrow-left"></i> Continue Shopping
+                </a>
+                {% endif %}
             </div>
-            
-            {% if cart %}
-            <a href="{{ continue_shopping_url }}" class="back-to-shop">
-                <i class="fa fa-arrow-left"></i> Continue Shopping
-            </a>
-            {% endif %}
         </div>
 
         <!-- Order Summary -->
-        {% if cart %}
         <div class="order-summary-card">
             <h2>Order Summary</h2>
             
@@ -538,34 +537,34 @@
                 {% endif %}
             </div>
 
-            {% if order %}
             <div id="order-number" class="order-number">
+                {% if order and cart %}
                 <span>Order Number:</span>
                 <strong>{{ order.tracking_number }}</strong>
+                {% endif %}
             </div>
-            {% if order.status == 'PAID' %}
-            <a href="{% url 'receipt' order.id %}" class="view-receipt-btn">
+
+            {% if order and order.status == 'PAID' %}
+            <a href="{% url 'receipt' order.id %}" class="view-receipt-btn" id="view-receipt-link">
                 <i class="fa fa-file-text"></i> View Receipt
             </a>
-            {% endif %}
             {% endif %}
 
             <div id="order-summary-update">
                 <div class="summary-row">
                     <span>Subtotal</span>
-                    <span>KES {{ total }}</span>
+                    <span>KES {{ total|default:0 }}</span>
                 </div>
                 <div class="summary-row total">
                     <span>Total</span>
-                    <span>KES {{ total }}</span>
+                    <span>KES {{ total|default:0 }}</span>
                 </div>
             </div>
 
-            <button class="checkout-btn" @click="open = true">
+            <button class="checkout-btn" @click="open = true" {% if not cart %}style="display:none"{% endif %} id="checkout-btn-main">
                 <i class="fa fa-lock"></i> Proceed to Checkout
             </button>
         </div>
-        {% endif %}
     </div>
 </main>
 

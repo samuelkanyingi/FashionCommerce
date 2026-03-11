@@ -285,6 +285,9 @@ def women(request):
     is_htmx = request.headers.get("HX-Request") == "true"
     template = "shop/product_grid.html" if is_htmx else "shop/women.html"
 
+    # Save current shop page to session for "Continue Shopping" logic
+    request.session['last_shop_url'] = request.get_full_path()
+
     return render(
         request,
         template,
@@ -332,6 +335,9 @@ def men(request):
 
     is_htmx = request.headers.get("HX-Request") == "true"
     template = "shop/product_grid.html" if is_htmx else "shop/men.html"
+
+    # Save current shop page to session for "Continue Shopping" logic
+    request.session['last_shop_url'] = request.get_full_path()
 
     return render(
         request,
@@ -453,13 +459,8 @@ def cart(request):
 
     total = sum(item["total_price"] for item in cart_items)
 
-    # Determine where to send user back when they click "Continue Shopping"
-    referer = request.META.get('HTTP_REFERER', '')
-    continue_shopping_url = reverse('women')
-    if 'men' in referer:
-        continue_shopping_url = reverse('men')
-    elif 'women' in referer:
-        continue_shopping_url = reverse('women')
+    # Use session-stored shop URL for "Continue Shopping"
+    continue_shopping_url = request.session.get('last_shop_url', reverse('women'))
 
     order = None
     
@@ -511,7 +512,11 @@ def update_cart(request):
                     item["quantity"] -= 1
                 break
         request.session["cart"] = cart_items
-        total = sum(i["price"] * i.get("quantity", 1) for i in cart_items)
+        
+        for item in cart_items:
+            item["total_price"] = item["price"] * item.get("quantity", 1)
+            
+        total = sum(item["total_price"] for item in cart_items)
 
         order = None
         if request.user.is_authenticated:
@@ -524,10 +529,18 @@ def update_cart(request):
         if order:
             sync_order_items(request, order)
 
+        # Determine where to send user back when they click "Continue Shopping"
+        referer = request.META.get('HTTP_REFERER', '')
+        continue_shopping_url = reverse('women')
+        if 'men' in referer:
+            continue_shopping_url = reverse('men')
+        elif 'women' in referer:
+            continue_shopping_url = reverse('women')
+
         return render(
             request,
             "shop/cart_items.html",
-            {"cart": cart_items, "total": total, "order": order},
+            {"cart": cart_items, "total": total, "order": order, "continue_shopping_url": continue_shopping_url},
         )
 
 
@@ -557,12 +570,23 @@ def remove_item(request):
         elif order:
             sync_order_items(request, order)
 
-        total = sum(i["price"] * i.get("quantity", 1) for i in cart_items)
+        for item in cart_items:
+            item["total_price"] = item["price"] * item.get("quantity", 1)
+
+        total = sum(item["total_price"] for item in cart_items)
+
+        # Determine where to send user back when they click "Continue Shopping"
+        referer = request.META.get('HTTP_REFERER', '')
+        continue_shopping_url = reverse('women')
+        if 'men' in referer:
+            continue_shopping_url = reverse('men')
+        elif 'women' in referer:
+            continue_shopping_url = reverse('women')
 
         return render(
             request,
             "shop/cart_items.html",
-            {"cart": cart_items, "total": total, "order": order},
+            {"cart": cart_items, "total": total, "order": order, "continue_shopping_url": continue_shopping_url},
         )
 
 

@@ -30,14 +30,22 @@
         <i class="fa fa-trash"></i>
     </button>
 </div>
-{% empty %}
+{% endfor %}
+
+{% if cart %}
+<a href="{{ continue_shopping_url }}" class="back-to-shop">
+    <i class="fa fa-arrow-left"></i> Continue Shopping
+</a>
+{% endif %}
+
+{% if not cart %}
 <div class="empty-cart">
     <i class="fa fa-shopping-cart"></i>
     <h3>Your cart is empty</h3>
     <p>Looks like you haven't added anything to your cart yet</p>
-    <a href="{% url 'women' %}" class="continue-shopping-btn">Continue Shopping</a>
+    <a href="{{ continue_shopping_url }}" class="continue-shopping-btn">Continue Shopping</a>
 </div>
-{% endfor %}
+{% endif %}
 
 <!-- Out of band swap for order summary -->
 <div id="order-summary-update" hx-swap-oob="true">
@@ -68,3 +76,17 @@
   </div>
   {% endif %}
 </div>
+
+<!-- OOB swap for cart icon in header -->
+<a href="{% url 'cart' %}" class="header-action" id="cart-icon" hx-swap-oob="true">
+    <i class="fa fa-shopping-cart"></i>
+    {% if cart|length > 0 %}
+    <span class="cart-count">{{ cart|length }}</span>
+    {% endif %}
+    <span>Cart</span>
+</a>
+
+<!-- OOB swap for checkout button -->
+<button class="checkout-btn" @click="open = true" {% if not cart %}style="display:none"{% endif %} id="checkout-btn-main" hx-swap-oob="true">
+    <i class="fa fa-lock"></i> Proceed to Checkout
+</button>
