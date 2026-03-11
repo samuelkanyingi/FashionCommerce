@@ -512,13 +512,13 @@
                     <i class="fa fa-shopping-cart"></i>
                     <h3>Your cart is empty</h3>
                     <p>Looks like you haven't added anything to your cart yet</p>
-                    <a href="{% url 'women' %}" class="continue-shopping-btn">Continue Shopping</a>
+                    <a href="{{ continue_shopping_url }}" class="continue-shopping-btn">Continue Shopping</a>
                 </div>
                 {% endfor %}
             </div>
             
             {% if cart %}
-            <a href="{% url 'women' %}" class="back-to-shop">
+            <a href="{{ continue_shopping_url }}" class="back-to-shop">
                 <i class="fa fa-arrow-left"></i> Continue Shopping
             </a>
             {% endif %}

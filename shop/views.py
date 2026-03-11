@@ -474,6 +474,14 @@ def cart(request):
 
     total = sum(item["total_price"] for item in cart_items)
 
+    # Determine where to send user back when they click "Continue Shopping"
+    referer = request.META.get('HTTP_REFERER', '')
+    continue_shopping_url = reverse('women')
+    if 'men' in referer:
+        continue_shopping_url = reverse('men')
+    elif 'women' in referer:
+        continue_shopping_url = reverse('women')
+
     order = None
     
     # Create order for both logged in and guest users
@@ -504,7 +512,7 @@ def cart(request):
                 order.save()
 
     return render(
-        request, "shop/cart.html", {"cart": cart_items, "total": total, "order": order}
+        request, "shop/cart.html", {"cart": cart_items, "total": total, "order": order, "continue_shopping_url": continue_shopping_url}
     )
 
 
