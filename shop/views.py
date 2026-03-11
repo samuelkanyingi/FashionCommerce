@@ -438,6 +438,34 @@ def add_to_cart(request):
         ''')
 
 
+def sync_order_items(request, order):
+    """Helper to sync session cart items with database OrderItems"""
+    if not order:
+        return
+        
+    cart_items = request.session.get("cart", [])
+    # Clear existing items and rebuild to ensure accuracy
+    order.items.all().delete()
+    
+    for item in cart_items:
+        try:
+            # Try to find product by name (how session currently stores it)
+            product = Product.objects.get(name=item["name"])
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=item.get("quantity", 1),
+                price=product.price,
+                size=item.get("size", ""),
+            )
+        except Product.DoesNotExist:
+            print(f"Sync error: Product {item['name']} not found")
+        except Exception as e:
+            print(f"Sync error: {e}")
+            
+    order.save()
+
+
 def cart(request):
     cart_items = request.session.get("cart", [])
 
@@ -467,28 +495,7 @@ def cart(request):
                 request.session["guest_order_id"] = order.id
         
         if order:
-            # Update order items
-            order.items.all().delete()
-            for item in cart_items:
-                try:
-                    product = Product.objects.get(name=item["name"])
-                    # Use product's current price instead of cart price
-                    OrderItem.objects.create(
-                        order=order,
-                        product=product,
-                        quantity=item.get("quantity", 1),
-                        price=product.price,  # Use current product price
-                        size=item.get("size", ""),
-                    )
-                    print(f"Created order item: {product.name} - KES {product.price}")
-                except Product.DoesNotExist:
-                    print(f"Product not found: {item['name']}")
-                except Exception as e:
-                    print(f"Error creating order item: {e} - item: {item}")
-
-            # Save order after adding items
-            order.save()
-            print(f"Order {order.id} total: {order.get_grand_total()}")
+            sync_order_items(request, order)
 
             # Calculate delivery fee from location
             location = request.POST.get("location") or (order.location if order else None)
@@ -503,11 +510,11 @@ def cart(request):
 
 def update_cart(request):
     if request.method == "POST":
-        cart = request.session.get("cart", [])
+        cart_items = request.session.get("cart", [])
         action = request.POST.get("action")
         name = request.POST.get("name")
 
-        for item in cart:
+        for item in cart_items:
             if item["name"] == name:
                 if "quantity" not in item:
                     item["quantity"] = 1
@@ -516,59 +523,59 @@ def update_cart(request):
                 elif action == "decrease" and item["quantity"] > 1:
                     item["quantity"] -= 1
                 break
-        request.session["cart"] = cart
-        total = sum(i["price"] * i.get("quantity", 1) for i in cart)
+        request.session["cart"] = cart_items
+        total = sum(i["price"] * i.get("quantity", 1) for i in cart_items)
 
         order = None
         if request.user.is_authenticated:
             order = Order.objects.filter(buyer=request.user, status="PENDING").first()
         else:
-            # Guest user - get order from session
             order_id = request.session.get("guest_order_id")
             if order_id:
                 order = Order.objects.filter(id=order_id, status="PENDING").first()
 
+        if order:
+            sync_order_items(request, order)
+
         return render(
             request,
             "shop/cart_items.html",
-            {"cart": cart, "total": total, "order": order},
+            {"cart": cart_items, "total": total, "order": order},
         )
 
 
 def remove_item(request):
     if request.method == "POST":
-        cart = request.session.get("cart", [])
+        cart_items = request.session.get("cart", [])
         name = request.POST.get("name")
 
-        cart = [item for item in cart if item["name"] != name]
-        request.session["cart"] = cart
-
-        # Delete order if cart is empty
-        if not cart:
-            if request.user.is_authenticated:
-                Order.objects.filter(buyer=request.user, status="PENDING").delete()
-            else:
-                # Guest user
-                order_id = request.session.get("guest_order_id")
-                if order_id:
-                    Order.objects.filter(id=order_id, status="PENDING").delete()
-                    del request.session["guest_order_id"]
-
-        total = sum(i["price"] * i.get("quantity", 1) for i in cart)
+        cart_items = [item for item in cart_items if item["name"] != name]
+        request.session["cart"] = cart_items
 
         order = None
         if request.user.is_authenticated:
             order = Order.objects.filter(buyer=request.user, status="PENDING").first()
         else:
-            # Guest user
             order_id = request.session.get("guest_order_id")
             if order_id:
                 order = Order.objects.filter(id=order_id, status="PENDING").first()
 
+        # Delete order if cart is empty
+        if not cart_items:
+            if order:
+                order.delete()
+                if not request.user.is_authenticated:
+                    del request.session["guest_order_id"]
+            order = None
+        elif order:
+            sync_order_items(request, order)
+
+        total = sum(i["price"] * i.get("quantity", 1) for i in cart_items)
+
         return render(
             request,
             "shop/cart_items.html",
-            {"cart": cart, "total": total, "order": order},
+            {"cart": cart_items, "total": total, "order": order},
         )
 
 
@@ -1148,107 +1155,120 @@ def my_receipts(request):
     return render(request, "shop/my_receipts.html", {"orders": orders})
 
 
-@login_required
-def generate_all_reports(request):
-    """Generate 5 system reports with real data"""
-    if not request.user.is_staff:
-        return redirect("index")
+def run_report_generation():
+    """Helper to update or create the 5 standard reports with latest data"""
+    now = datetime.datetime.now()
+    
+    # Pre-clean: If there are multiple reports of the same type (from previous clutter), 
+    # delete them so update_or_create doesn't crash.
+    for r_type in ["sales", "inventory", "orders", "customers", "products"]:
+        existing = Report.objects.filter(report_type=r_type)
+        if existing.count() > 1:
+            existing.delete()
 
     # 1. Sales Report
     paid_orders = Order.objects.filter(status="PAID").order_by("-created_at")
     total_revenue = sum(o.get_grand_total() for o in paid_orders)
-    sales_data = {
-        "total_orders": paid_orders.count(),
-        "total_revenue": total_revenue,
-        "items": [
-            {
-                "tracking": o.tracking_number,
-                "amount": o.get_grand_total(),
-                "date": o.created_at.strftime("%Y-%m-%d"),
-            }
-            for o in paid_orders[:20]
-        ],
-    }
-    Report.objects.create(
+    Report.objects.update_or_create(
         report_type="sales",
-        title=f"Sales Summary - {datetime.datetime.now().strftime('%b %d')}",
-        data=sales_data,
+        defaults={
+            "title": f"Sales Summary - {now.strftime('%b %d')}",
+            "data": {
+                "total_orders": paid_orders.count(),
+                "total_revenue": total_revenue,
+                "items": [
+                    {"tracking": o.tracking_number, "amount": o.get_grand_total(), "date": o.created_at.strftime("%Y-%m-%d")}
+                    for o in paid_orders[:20]
+                ],
+            }
+        }
     )
 
     # 2. Inventory Report
     products = Product.objects.all().order_by("stock")
-    inventory_data = {
-        "total_products": products.count(),
-        "low_stock": products.filter(stock__lt=10).count(),
-        "items": [
-            {"name": p.name, "stock": p.stock, "price": p.price} for p in products[:20]
-        ],
-    }
-    Report.objects.create(
+    Report.objects.update_or_create(
         report_type="inventory",
-        title=f"Stock Alert - {datetime.datetime.now().strftime('%b %d')}",
-        data=inventory_data,
+        defaults={
+            "title": f"Stock Alert - {now.strftime('%b %d')}",
+            "data": {
+                "total_products": products.count(),
+                "low_stock": products.filter(stock__lt=10).count(),
+                "items": [{"name": p.name, "stock": p.stock, "price": p.price} for p in products[:20]],
+            }
+        }
     )
 
     # 3. Orders Report
     all_orders = Order.objects.all().order_by("-created_at")
-    orders_data = {
-        "total_orders": all_orders.count(),
-        "pending": all_orders.filter(status="PENDING").count(),
-        "paid": all_orders.filter(status="PAID").count(),
-        "items": [
-            {"tracking": o.tracking_number, "status": o.status, "total": o.get_grand_total()}
-            for o in all_orders[:20]
-        ],
-    }
-    Report.objects.create(
+    Report.objects.update_or_create(
         report_type="orders",
-        title=f"Order Status - {datetime.datetime.now().strftime('%b %d')}",
-        data=orders_data,
+        defaults={
+            "title": f"Order Status - {now.strftime('%b %d')}",
+            "data": {
+                "total_orders": all_orders.count(),
+                "pending": all_orders.filter(status="PENDING").count(),
+                "paid": all_orders.filter(status="PAID").count(),
+                "items": [
+                    {
+                        "tracking": o.tracking_number, 
+                        "email": o.email or (o.buyer.email if o.buyer else "N/A"),
+                        "status": o.status, 
+                        "total": o.get_grand_total()
+                    }
+                    for o in all_orders[:20]
+                ],
+            }
+        }
     )
 
     # 4. Customer Report
-    customers = User.objects.annotate(order_count=models.Count("orders")).order_by("-order_count")
-    customers_data = {
-        "total_customers": User.objects.count(),
-        "items": [
-            {"username": u.username, "orders": u.order_count, "email": u.email}
-            for u in customers[:20]
-        ],
-    }
-    Report.objects.create(
+    customers = User.objects.annotate(
+        total_orders=models.Count("orders"),
+        paid_orders=models.Count("orders", filter=models.Q(orders__status="PAID"))
+    ).filter(total_orders__gt=0).order_by("-paid_orders", "-total_orders")
+    
+    Report.objects.update_or_create(
         report_type="customers",
-        title=f"Customer Leaders - {datetime.datetime.now().strftime('%b %d')}",
-        data=customers_data,
+        defaults={
+            "title": f"Customer Leaders - {now.strftime('%b %d')}",
+            "data": {
+                "total_customers": User.objects.count(),
+                "users_with_orders": customers.count(),
+                "items": [{"username": u.username, "paid": u.paid_orders, "total": u.total_orders, "email": u.email} for u in customers[:20]],
+            }
+        }
     )
 
-    # 5. Product Report (Rating Leaders)
+    # 5. Product Report
     all_products = list(Product.objects.all())
     all_products.sort(key=lambda p: p.get_avg_rating(), reverse=True)
-    
-    product_data = {
-        "items": [
-            {
-                "name": p.name,
-                "rating": p.get_avg_rating(),
-                "reviews": p.get_review_count(),
-            }
-            for p in all_products[:20]
-        ]
-    }
-    Report.objects.create(
+    Report.objects.update_or_create(
         report_type="products",
-        title=f"Top Rated Products - {datetime.datetime.now().strftime('%b %d')}",
-        data=product_data,
+        defaults={
+            "title": f"Top Rated Products - {now.strftime('%b %d')}",
+            "data": {
+                "items": [{"name": p.name, "rating": p.get_avg_rating(), "reviews": p.get_review_count()} for p in all_products[:20]]
+            }
+        }
     )
 
+
+@login_required
+def generate_all_reports(request):
+    """Manual trigger to refresh reports (now just calls the helper)"""
+    if not request.user.is_staff:
+        return redirect("index")
+    run_report_generation()
     return redirect("reports")
 
 
 def reports(request):
-    """View all generated reports"""
+    """View all reports - auto-updates data on page load"""
+    if request.user.is_authenticated and request.user.is_staff:
+        run_report_generation()
+        
     cart = request.session.get("cart", [])
-    reports = Report.objects.all().order_by("-generated_at")
+    reports = Report.objects.all().order_by("report_type")  # Stable order
     return render(request, "shop/reports.html", {"reports": reports, "cart": cart})
 
 
