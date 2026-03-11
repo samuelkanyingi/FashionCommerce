@@ -79,6 +79,7 @@
     openWith(card) {
       this.qty = 1;
       this.selectedSize = '';
+      this.sizeError = false;
       this.product = {
         id:            card.querySelector('input[name=product_id]').value,
         name:          card.querySelector('.product-title').textContent.trim(),
@@ -91,6 +92,10 @@
                            .map(o => o.value).filter(v => v !== '')
       };
       this.open = true;
+    },
+    showSizeError() {
+      this.sizeError = true;
+      setTimeout(() => { this.sizeError = false; }, 3000);
     },
     starClass(i) {
       if (this.product.reviews === 0) return 'fa-star-o';
@@ -126,13 +131,21 @@
         </div>
         <div class="qv-sizes">
           <h4>Select Size</h4>
+          <div x-show="sizeError" 
+               x-transition:enter="transition ease-out duration-300"
+               x-transition:enter-start="opacity-0 transform -translate-y-2"
+               x-transition:enter-end="opacity-100 transform translate-y-0"
+               class="size-error-msg" 
+               style="color: #ff6b6b; font-size: 13px; margin-bottom: 8px; font-weight: 600; background: #fff5f5; padding: 8px; border-radius: 4px; border-left: 3px solid #ff6b6b;">
+            <i class="fa fa-exclamation-circle"></i> Please select a size first
+          </div>
           <div class="qv-size-options">
             <template x-for="size in product.sizes" :key="size">
               <button
                 type="button"
                 class="size-option"
                 :class="{ selected: selectedSize === size }"
-                @click="selectedSize = size"
+                @click="selectedSize = size; sizeError = false"
                 x-text="size"
               ></button>
             </template>
@@ -151,14 +164,23 @@
           hx-target="#cart-icon"
           hx-swap="outerHTML"
           hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+          @submit="if (!selectedSize) { $event.preventDefault(); showSizeError(); return false; }"
         >
           <input type="hidden" name="product_id" :value="product.id">
           <input type="hidden" name="size" :value="selectedSize">
           <input type="hidden" name="quantity" :value="qty">
           <input type="hidden" name="redirect" value="true">
-          <button type="submit" class="qv-add-to-cart-btn">
-            <i class="fa fa-shopping-cart"></i> Add to Cart
-          </button>
+          <div style="display: flex; gap: 10px; margin-top: 20px; align-items: stretch;">
+            <button type="submit" 
+                    class="qv-add-to-cart-btn" 
+                    :style="!selectedSize ? 'flex: 1; padding: 12px 10px; font-size: 13px; white-space: nowrap; opacity: 0.6; cursor: not-allowed; background: #666;' : 'flex: 1; padding: 12px 10px; font-size: 13px; white-space: nowrap;'"
+                    @click="if(!selectedSize) { showSizeError(); $event.preventDefault(); }">
+              <i class="fa fa-shopping-cart"></i> Add to Cart
+            </button>
+            <button type="button" class="qv-continue-btn" @click="open = false" style="flex: 1.2; background: orange; color: #333; border: none; padding: 12px 10px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; transition: all 0.2s;">
+              Continue Shopping
+            </button>
+          </div>
         </form>
       </div>
     </div>

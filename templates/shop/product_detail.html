@@ -42,7 +42,15 @@
         {% endif %}
     </div>
     
-    <div class="product-detail-info">
+    <div class="product-detail-info" x-data="{ 
+        selectedSize: '', 
+        qty: 1, 
+        sizeError: false,
+        showSizeError() {
+            this.sizeError = true;
+            setTimeout(() => { this.sizeError = false; }, 3000);
+        }
+    }">
         <h1>{{ product.name }}</h1>
         <div class="product-detail-price">
             KES {{ product.price }}
@@ -65,18 +73,31 @@
         
         <div class="size-selector">
             <h4>Select Size</h4>
-            <div class="size-options" id="sizeOptions">
+            <div x-show="sizeError" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform -translate-y-2"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 style="color: #ff6b6b; font-size: 13px; margin-bottom: 8px; font-weight: 600; background: #fff5f5; padding: 8px; border-radius: 4px; border-left: 3px solid #ff6b6b;">
+                <i class="fa fa-exclamation-circle"></i> Please select a size first
+            </div>
+            <div class="size-options">
                 {% if product.subcategory == 'shoes' %}
                     {% if product.category == 'women' %}
-                    <button type="button" class="size-option" data-size="35">35</button><button type="button" class="size-option" data-size="36">36</button><button type="button" class="size-option" data-size="37">37</button><button type="button" class="size-option" data-size="38">38</button><button type="button" class="size-option" data-size="39">39</button><button type="button" class="size-option" data-size="40">40</button>
+                        <template x-for="s in ['35','36','37','38','39','40']">
+                            <button type="button" class="size-option" :class="{ 'selected': selectedSize === s }" @click="selectedSize = s; sizeError = false" x-text="s"></button>
+                        </template>
                     {% else %}
-                    <button type="button" class="size-option" data-size="38">38</button><button type="button" class="size-option" data-size="39">39</button><button type="button" class="size-option" data-size="40">40</button><button type="button" class="size-option" data-size="41">41</button><button type="button" class="size-option" data-size="42">42</button><button type="button" class="size-option" data-size="43">43</button>
+                        <template x-for="s in ['38','39','40','41','42','43']">
+                            <button type="button" class="size-option" :class="{ 'selected': selectedSize === s }" @click="selectedSize = s; sizeError = false" x-text="s"></button>
+                        </template>
                     {% endif %}
                 {% else %}
                     {% if product.category == 'women' %}
-                    <button type="button" class="size-option" data-size="XS">XS</button>
+                        <button type="button" class="size-option" :class="{ 'selected': selectedSize === 'XS' }" @click="selectedSize = 'XS'; sizeError = false">XS</button>
                     {% endif %}
-                    <button type="button" class="size-option" data-size="S">S</button><button type="button" class="size-option" data-size="M">M</button><button type="button" class="size-option" data-size="L">L</button><button type="button" class="size-option" data-size="XL">XL</button>
+                    <template x-for="s in ['S','M','L','XL']">
+                        <button type="button" class="size-option" :class="{ 'selected': selectedSize === s }" @click="selectedSize = s; sizeError = false" x-text="s"></button>
+                    </template>
                 {% endif %}
             </div>
         </div>
@@ -84,19 +105,21 @@
         <div class="quantity-selector">
             <h4>Quantity</h4>
             <div class="quantity-controls">
-                <button type="button" id="qtyMinus">-</button>
-                <input type="number" id="qtyDisplay" value="1" min="1" readonly>
-                <button type="button" id="qtyPlus">+</button>
+                <button type="button" @click="if(qty > 1) qty--">-</button>
+                <input type="number" x-model="qty" min="1" readonly>
+                <button type="button" @click="qty++">+</button>
             </div>
         </div>
         
-        <form id="mainAddToCartForm" method="POST" hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML">
+        <form id="mainAddToCartForm" method="POST" hx-post="{% url 'add_to_cart' %}" hx-target="#cart-icon" hx-swap="outerHTML" @submit="if(!selectedSize) { $event.preventDefault(); showSizeError(); return false; }">
             {% csrf_token %}
             <input type="hidden" name="product_id" value="{{ product.id }}">
-            <input type="hidden" name="size" id="selectedSize" value="">
-            <input type="hidden" name="quantity" id="selectedQty" value="1">
+            <input type="hidden" name="size" :value="selectedSize">
+            <input type="hidden" name="quantity" :value="qty">
             <input type="hidden" name="redirect" value="true">
-            <button type="submit" class="add-to-cart-btn">
+            <button type="submit" class="add-to-cart-btn" 
+                    :style="!selectedSize ? 'background: #666; opacity: 0.6; cursor: not-allowed;' : ''"
+                    @click="if(!selectedSize) { $event.preventDefault(); showSizeError(); }">
                 <i class="fa fa-shopping-cart"></i> Add to Cart
             </button>
         </form>
