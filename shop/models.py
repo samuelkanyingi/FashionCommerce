@@ -105,7 +105,7 @@ class Product(models.Model):
 
 
 class Order(models.Model):
-    delivery_fee = models.IntegerField(default=0)
+    delivery_fee = models.IntegerField(null=True, blank=True)
     address = models.CharField(max_length=255, null=True, blank=True)
     landmark = models.CharField(max_length=200, null=True, blank=True)
     id = models.AutoField(primary_key=True)
@@ -121,13 +121,18 @@ class Order(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
     created_at = models.DateTimeField(auto_now_add=True)
+    checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
 
     tracking_number = models.CharField(max_length=20, unique=True, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.tracking_number:
             self.tracking_number = str(uuid.uuid4()).split("-")[0].upper()
-        if self.location and self.delivery_fee == 0:
+        
+        # Only set delivery fee if it hasn't been set yet (is None) 
+        # This allows 0 to be a valid, persistent value (Free Delivery)
+        if self.location and self.delivery_fee is None:
+            from .views import calculate_delivery_fee
             self.delivery_fee = calculate_delivery_fee(self.location)
         super().save(*args, **kwargs)
 
