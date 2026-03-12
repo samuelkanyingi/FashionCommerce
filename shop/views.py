@@ -371,6 +371,36 @@ def add_to_cart(request):
             try:
                 product = Product.objects.get(id=product_id)
                 
+                # Check if product is in stock
+                if product.stock <= 0:
+                    return HttpResponse(f"""
+                        <div style="color: red; padding: 10px; text-align: center;">
+                            Sorry, "{product.name}" is out of stock!
+                        </div>
+                    """, status=400)
+                
+                # Check if requested quantity exceeds available stock
+                available_stock = product.stock
+                requested_qty = quantity
+                
+                # Check current quantity in cart
+                current_qty_in_cart = 0
+                for item in cart:
+                    if item.get("product_id") == str(product_id) and item.get("size") == size:
+                        current_qty_in_cart = item.get("quantity", 0)
+                        break
+                
+                # If adding more than available, limit it
+                if current_qty_in_cart + requested_qty > available_stock:
+                    requested_qty = max(0, available_stock - current_qty_in_cart)
+                    if requested_qty == 0:
+                        return HttpResponse(f"""
+                            <div style="color: red; padding: 10px; text-align: center;">
+                                Sorry, only {available_stock} items available for "{product.name}"
+                            </div>
+                        """, status=400)
+                    quantity = requested_qty
+                
                 # Check if item already exists in cart with same size
                 found = False
                 for item in cart:

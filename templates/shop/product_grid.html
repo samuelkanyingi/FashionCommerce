@@ -43,6 +43,7 @@
       class="add-to-cart-form"
     >
       <input type="hidden" name="product_id" value="{{ product.id }}" />
+      <input type="hidden" name="product_stock" value="{{ product.stock }}" class="product-stock" />
       <select name="size" class="size-select" style="display: none;">
         <option value="">Size</option>
         {% if product.subcategory == 'shoes' %}
@@ -73,7 +74,7 @@
 <div
   x-data="{
     open: false,
-    product: { id:'', name:'', price:'', originalPrice:'', image:'', sizes:[], rating:0, reviews:0 },
+    product: { id:'', name:'', price:'', originalPrice:'', image:'', sizes:[], rating:0, reviews:0, stock:0 },
     selectedSize: '',
     qty: 1,
     openWith(card) {
@@ -88,6 +89,7 @@
         image:         card.querySelector('img').src,
         rating:        parseFloat(card.querySelector('.product-rating').dataset.rating) || 0,
         reviews:       parseInt(card.querySelector('.product-rating').dataset.reviews) || 0,
+        stock:         parseInt(card.querySelector('input[name=product_stock]').value) || 0,
         sizes:         Array.from(card.querySelectorAll('select[name=size] option'))
                            .map(o => o.value).filter(v => v !== '')
       };
@@ -155,9 +157,15 @@
           <h4>Quantity</h4>
           <div class="quantity-controls">
             <button type="button" class="qty-btn minus" @click="qty = Math.max(1, qty - 1)">-</button>
-            <input type="number" :value="qty" min="1" readonly>
-            <button type="button" class="qty-btn plus" @click="qty++">+</button>
+            <input type="number" :value="qty" min="1" :max="product.stock" readonly>
+            <button type="button" class="qty-btn plus" @click="qty = Math.min(product.stock, qty + 1)">+</button>
           </div>
+        </div>
+        <div x-show="product.stock > 0" style="margin-top: 10px; padding: 8px; background: #e8f5e9; border-radius: 4px; font-size: 13px; color: #2e7d32;">
+          <i class="fa fa-check-circle"></i> <span x-text="product.stock + ' in stock'"></span>
+        </div>
+        <div x-show="product.stock <= 0" style="margin-top: 10px; padding: 8px; background: #ffebee; border-radius: 4px; font-size: 13px; color: #c62828;">
+          <i class="fa fa-times-circle"></i> Out of stock
         </div>
         <form
           hx-post="{% url 'add_to_cart' %}"
@@ -173,9 +181,10 @@
           <div style="display: flex; gap: 10px; margin-top: 20px; align-items: stretch;">
             <button type="submit" 
                     class="qv-add-to-cart-btn" 
-                    :style="!selectedSize ? 'flex: 1; padding: 12px 10px; font-size: 13px; white-space: nowrap; opacity: 0.6; cursor: not-allowed; background: #666;' : 'flex: 1; padding: 12px 10px; font-size: 13px; white-space: nowrap;'"
+                    :disabled="product.stock <= 0"
+                    :style="(product.stock <= 0 || !selectedSize) ? 'flex: 1; padding: 12px 10px; font-size: 13px; white-space: nowrap; opacity: 0.6; cursor: not-allowed; background: #999;' : 'flex: 1; padding: 12px 10px; font-size: 13px; white-space: nowrap;'"
                     @click="if(!selectedSize) { showSizeError(); $event.preventDefault(); }">
-              <i class="fa fa-shopping-cart"></i> Add to Cart
+              <i class="fa fa-shopping-cart"></i> <span x-text="product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'"></span>
             </button>
             <button type="button" class="qv-continue-btn" @click="open = false" style="flex: 1.2; background: orange; color: #333; border: none; padding: 12px 10px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; transition: all 0.2s;">
               Continue Shopping

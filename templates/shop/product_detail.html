@@ -45,16 +45,29 @@
     <div class="product-detail-info" x-data="{ 
         selectedSize: '', 
         qty: 1, 
+        availableStock: {{ product.stock }},
         sizeError: false,
         showSizeError() {
             this.sizeError = true;
             setTimeout(() => { this.sizeError = false; }, 3000);
+        },
+        increaseQty() {
+            if (this.qty < this.availableStock) this.qty++;
+        },
+        decreaseQty() {
+            if (this.qty > 1) this.qty--;
         }
     }">
         <h1>{{ product.name }}</h1>
         <div class="product-detail-price">
             KES {{ product.price }}
             <span class="original">KES {{ product.price|add:500 }}</span>
+        </div>
+        
+        <div style="margin-bottom: 15px; padding: 10px; border-radius: 6px; background: {% if product.stock > 0 %}#e8f5e9{% else %}#ffebee{% endif %};">
+            <strong style="color: {% if product.stock > 0 %}#2e7d32{% else %}#c62828{% endif %};">
+                {% if product.stock > 0 %}✓ In Stock ({{ product.stock }} available){% else %}✗ Out of Stock{% endif %}
+            </strong>
         </div>
         
         <div class="product-rating">
@@ -105,9 +118,9 @@
         <div class="quantity-selector">
             <h4>Quantity</h4>
             <div class="quantity-controls">
-                <button type="button" @click="if(qty > 1) qty--">-</button>
-                <input type="number" x-model="qty" min="1" readonly>
-                <button type="button" @click="qty++">+</button>
+                <button type="button" @click="decreaseQty()">-</button>
+                <input type="number" x-model="qty" min="1" :max="availableStock" readonly>
+                <button type="button" @click="increaseQty()" :disabled="qty >= availableStock">+</button>
             </div>
         </div>
         
@@ -118,9 +131,10 @@
             <input type="hidden" name="quantity" :value="qty">
             <input type="hidden" name="redirect" value="true">
             <button type="submit" class="add-to-cart-btn" 
-                    :style="!selectedSize ? 'background: #666; opacity: 0.6; cursor: not-allowed;' : ''"
+                    :disabled="availableStock <= 0"
+                    :style="(availableStock <= 0 || !selectedSize) ? 'background: #999; opacity: 0.6; cursor: not-allowed;' : ''"
                     @click="if(!selectedSize) { $event.preventDefault(); showSizeError(); }">
-                <i class="fa fa-shopping-cart"></i> Add to Cart
+                <i class="fa fa-shopping-cart"></i> {% if product.stock <= 0 %}Out of Stock{% else %}Add to Cart{% endif %}
             </button>
         </form>
         
