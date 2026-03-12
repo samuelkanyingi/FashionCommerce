@@ -1347,6 +1347,23 @@ def report_detail(request, report_id):
     return render(request, "shop/report_detail.html", {"report": report, "cart": cart})
 
 
+@login_required
+def order_history(request):
+    """View all pending and paid orders for the logged-in user"""
+    orders = Order.objects.filter(buyer=request.user).order_by("-created_at")
+    cart = request.session.get("cart", [])
+    return render(request, "shop/order_history.html", {"orders": orders, "cart": cart})
+
+
+@login_required
+@require_POST
+def delete_pending_order(request, order_id):
+    """Allow user to delete/cancel a pending order from their history"""
+    order = get_object_or_404(Order, id=order_id, buyer=request.user, status="PENDING")
+    order.delete()
+    return redirect("order_history")
+
+
 def track_order(request):
     """Track order by tracking number or email"""
     cart = request.session.get("cart", [])

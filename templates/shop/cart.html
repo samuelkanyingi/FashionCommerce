@@ -394,6 +394,10 @@
         </div>
         <div class="header-right">
             <div class="header-actions">
+                <a href="{% url 'order_history' %}" class="header-action">
+                    <i class="fa fa-history"></i>
+                    <span>History</span>
+                </a>
                 {% if user.is_authenticated %}
                 <a href="#" class="header-action">
                     <i class="fa fa-user"></i>

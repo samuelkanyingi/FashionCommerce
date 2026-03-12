@@ -1,0 +1,105 @@
+{% extends "shop/base.html" %}
+{% load static %}
+
+{% block title %}Order History - FashionHub{% endblock %}
+
+{% block content %}
+<div class="history-container" style="max-width: 1000px; margin: 40px auto; padding: 0 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h1 style="color: #333; margin: 0;"><i class="fa fa-history" style="color: #04AA6D;"></i> Order History</h1>
+        <a href="{% url 'cart' %}" style="color: #04AA6D; text-decoration: none; font-weight: 600;">
+            <i class="fa fa-shopping-cart"></i> Go to Cart
+        </a>
+    </div>
+
+    {% if orders %}
+    <div class="orders-list">
+        {% for order in orders %}
+        <div class="order-card" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; overflow: hidden; border: 1px solid #eee;">
+            <div class="order-header" style="background: #fdfdfd; padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="color: #888; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Order Number</span>
+                    <h3 style="margin: 5px 0 0; color: #333;">{{ order.tracking_number }}</h3>
+                </div>
+                <div style="text-align: right;">
+                    <div class="status-badge" style="
+                        padding: 6px 15px; 
+                        border-radius: 20px; 
+                        font-weight: 600; 
+                        font-size: 12px;
+                        display: inline-block;
+                        {% if order.status == 'PAID' %}
+                        background: #e6f7ef; color: #04AA6D;
+                        {% else %}
+                        background: #fff8e1; color: #f9a825;
+                        {% endif %}
+                    ">
+                        <i class="fa {% if order.status == 'PAID' %}fa-check-circle{% else %}fa-clock-o{% endif %}"></i> 
+                        {{ order.status }}
+                    </div>
+                    <div style="color: #999; font-size: 12px; margin-top: 5px;">{{ order.created_at|date:"M d, Y H:i" }}</div>
+                </div>
+            </div>
+            
+            <div class="order-body" style="padding: 20px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 40px;">
+                    <div>
+                        <h4 style="margin: 0 0 15px; color: #666; font-size: 14px;">Items</h4>
+                        <div class="order-items">
+                            {% for item in order.items.all %}
+                            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #f0f0f0;">
+                                <span>{{ item.quantity }}x {{ item.product.name }} {% if item.size %}(Size: {{ item.size }}){% endif %}</span>
+                                <span style="font-weight: 600;">KES {{ item.get_total }}</span>
+                            </div>
+                            {% empty %}
+                            <p style="color: #999; font-style: italic;">No items in this order.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
+                            <span style="color: #777;">Delivery Fee:</span>
+                            <span>KES {{ order.delivery_fee|default:0 }}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #333; font-size: 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+                            <span>Grand Total:</span>
+                            <span style="color: #04AA6D;">KES {{ order.get_grand_total }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="order-footer" style="padding: 15px 20px; background: #fafafa; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 15px;">
+                {% if order.status == 'PENDING' %}
+                <form action="{% url 'delete_pending_order' order.id %}" method="POST" onsubmit="return confirm('Are you sure you want to cancel this pending order?')">
+                    {% csrf_token %}
+                    <button type="submit" style="background: white; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">
+                        <i class="fa fa-trash"></i> Cancel Order
+                    </button>
+                </form>
+                <a href="{% url 'cart' %}" style="background: #04AA6D; color: white; padding: 8px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                    Resume Checkout
+                </a>
+                {% elif order.status == 'PAID' %}
+                <a href="{% url 'receipt' order.id %}" style="background: #333; color: white; padding: 8px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                    <i class="fa fa-file-text"></i> View Receipt
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 80px 20px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="font-size: 60px; color: #eee; margin-bottom: 20px;">
+            <i class="fa fa-shopping-basket"></i>
+        </div>
+        <h2 style="color: #333;">No orders found</h2>
+        <p style="color: #888; max-width: 400px; margin: 10px auto 30px;">You haven't placed any orders yet. Start shopping to see your history here!</p>
+        <a href="{% url 'index' %}" style="background: #04AA6D; color: white; padding: 12px 30px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Start Shopping
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

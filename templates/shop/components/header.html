@@ -6,6 +6,9 @@
       <a href="{% url 'men' %}" style="color: #333; text-decoration: none;">Men</a>
       <!-- <a href="{% url 'cart' %}" style="color: #333; text-decoration: none;">Cart ({{ cart|length }})</a> -->
       <a href="{% url 'reports' %}" style="color: #333; text-decoration: none;">Reports</a>
+      <a href="{% url 'order_history' %}" style="color: #333; text-decoration: none; display: flex; align-items: center; gap: 5px;">
+          <i class="fa fa-history"></i> Order History
+      </a>
     </div>
     <div>
       {% if user.is_authenticated %}
