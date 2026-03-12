@@ -691,7 +691,8 @@
 
                 <div class="form-group">
                     <label>Phone</label>
-                    <input type="text" name="phone" placeholder="07XXXXXXXX" required>
+                    <input type="tel" name="phone" placeholder="07XXXXXXXX" required 
+                           @input="$el.value = $event.target.value.replace(/[^0-9]/g, '')">
                 </div>
 
                 <button type="button" class="btn-primary" :disabled="!deliveryAvailable" :style="!deliveryAvailable ? 'opacity: 0.5; cursor: not-allowed;' : ''" hx-post="{% url 'update_shipping' %}" hx-include="#shippingForm" hx-swap="none" @click="handleNextClick()">
@@ -710,7 +711,8 @@
                 {% csrf_token %}
                 <div class="form-group">
                     <label>M-Pesa Number</label>
-                    <input type="text" name="phone" x-model="phone" placeholder="2547XXXXXXXX" required>
+                    <input type="tel" name="phone" x-model="phone" placeholder="2547XXXXXXXX" required
+                           @input="phone = $event.target.value.replace(/[^0-9]/g, '')">
                 </div>
                 <button type="button" class="btn-primary" @click="if(phone && phone.trim() !== '') { step = 3 } else { document.getElementById('paymentForm').reportValidity() }">
                     Next: Review <i class="fa fa-arrow-right"></i>
