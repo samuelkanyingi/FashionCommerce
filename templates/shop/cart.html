@@ -380,10 +380,9 @@
 </div>
 
 <!-- HEADER -->
-<header class="main-header">
+<header class="main-header" x-data="{ mobileNav: false }">
     <div class="header-container">
         <div class="header-left">
-            <span class="menu-toggle" onclick="openNav()">&#9776;</span>
             <a href="{% url 'index' %}" class="logo">FashionHub</a>
         </div>
         <div class="header-center">
@@ -426,6 +425,23 @@
             </div>
         </div>
     </div>
+
+    <!-- MOBILE NAVIGATION (Slide Down) -->
+    <!-- <div class="nav-menu" :class="{ 'show': mobileNav }" style="position: absolute; top: 100%; left: 0; width: 100%; background: white; z-index: 1000; box-shadow: 0 10px 15px rgba(0,0,0,0.1);">
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 15px;">
+            <a href="{% url 'index' %}" style="text-decoration: none; color: #333; font-weight: 600;">Home</a>
+            <a href="{% url 'women' %}" style="text-decoration: none; color: #333; font-weight: 600;">Women</a>
+            <a href="{% url 'men' %}" style="text-decoration: none; color: #333; font-weight: 600;">Men</a>
+            <a href="{% url 'reports' %}" style="text-decoration: none; color: #333; font-weight: 600;">Reports</a>
+            
+            <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 5px;">
+                <form action="{% url 'search' %}" method="get" class="search-bar" style="border-radius: 5px;">
+                    <input type="text" name="q" placeholder="Search...">
+                    <button type="submit" style="padding: 10px;"><i class="fa fa-search"></i></button>
+                </form>
+            </div>
+        </div>
+    </div> -->
 </header>
 
 <!-- NAVIGATION -->

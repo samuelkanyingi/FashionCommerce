@@ -1332,6 +1332,54 @@ def run_report_generation():
         }
     )
 
+    # 6. Best Sellers Report - Show ALL products including those with 0 sales
+    from django.db.models import Sum, F, Q, OuterRef, Subquery
+    
+    # Get products that have been sold
+    products_with_sales = OrderItem.objects.filter(
+        order__status="PAID"
+    ).values(
+        "product"
+    ).annotate(
+        total_sold=Sum("quantity")
+    )
+    
+    # Get all products
+    all_products = Product.objects.all()
+    
+    # Build the list - include all products
+    best_sellers_items = []
+    for product in all_products:
+        # Get total sold for this product
+        sold_data = OrderItem.objects.filter(
+            product=product,
+            order__status="PAID"
+        ).aggregate(total_sold=Sum("quantity"))
+        
+        total_sold = sold_data["total_sold"] or 0
+        
+        best_sellers_items.append({
+            "Product Name": product.name,
+            "Selling Price": product.price,
+            "Quantity Sold": total_sold,
+            "Revenue": total_sold * product.price,
+            "Current Stock": product.stock
+        })
+    
+    # Sort by quantity sold (highest first), take top 30
+    best_sellers_items = sorted(best_sellers_items, key=lambda x: x["Quantity Sold"], reverse=True)[:30]
+
+    Report.objects.update_or_create(
+        report_type="bestsellers",
+        defaults={
+            "title": f"Top 30 Best Sellers ({timestamp_str})",
+            "data": {
+                "last_updated": timestamp_str,
+                "items": best_sellers_items,
+            }
+        }
+    )
+
 
 @login_required
 def generate_all_reports(request):

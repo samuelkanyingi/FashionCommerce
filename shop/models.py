@@ -194,6 +194,7 @@ class Report(models.Model):
         ("orders", "Orders Report"),
         ("customers", "Customer Report"),
         ("products", "Product Report"),
+        ("bestsellers", "Best Sellers Report"),
     ]
 
     id = models.AutoField(primary_key=True)
