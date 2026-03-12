@@ -1239,7 +1239,7 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="sales",
         defaults={
-            "title": f"Sales Summary ({timestamp_str})",
+            "title": f"Sales Summary Report ({timestamp_str})",
             "data": {
                 "last_updated": timestamp_str,
                 "total_orders": len(valid_paid_orders),
@@ -1257,7 +1257,7 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="inventory",
         defaults={
-            "title": f"Stock Alert ({timestamp_str})",
+            "title": f"Stock Alert Report ({timestamp_str})",
             "data": {
                 "last_updated": timestamp_str,
                 "total_products": products.count(),
@@ -1272,7 +1272,7 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="orders",
         defaults={
-            "title": f"Order Status ({timestamp_str})",
+            "title": f"Order Status Report ({timestamp_str})",
             "data": {
                 "last_updated": timestamp_str,
                 "total_orders": all_orders.count(),
@@ -1300,7 +1300,7 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="customers",
         defaults={
-            "title": f"Customer Leaders ({timestamp_str})",
+            "title": f"Customer Leaders Report ({timestamp_str})",
             "data": {
                 "last_updated": timestamp_str,
                 "total_customers": User.objects.count(),
@@ -1324,7 +1324,7 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="products",
         defaults={
-            "title": f"Top Rated Products ({timestamp_str})",
+            "title": f"Top Rated Products Report ({timestamp_str})",
             "data": {
                 "last_updated": timestamp_str,
                 "items": [{"name": p.name, "rating": p.get_avg_rating(), "reviews": p.get_review_count()} for p in all_products[:20]]
@@ -1372,7 +1372,7 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="bestsellers",
         defaults={
-            "title": f"Top 30 Best Sellers ({timestamp_str})",
+            "title": f"Top Best Sellers Report ({timestamp_str})",
             "data": {
                 "last_updated": timestamp_str,
                 "items": best_sellers_items,
