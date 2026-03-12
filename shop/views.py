@@ -1330,16 +1330,19 @@ def generate_all_reports(request):
     return redirect("reports")
 
 
+from django.contrib.admin.views.decorators import staff_member_required
+
+@staff_member_required
 def reports(request):
     """View all reports - auto-updates data on page load"""
-    if request.user.is_authenticated and request.user.is_staff:
-        run_report_generation()
+    run_report_generation()
         
     cart = request.session.get("cart", [])
     reports = Report.objects.all().order_by("report_type")  # Stable order
     return render(request, "shop/reports.html", {"reports": reports, "cart": cart})
 
 
+@staff_member_required
 def report_detail(request, report_id):
     """View a specific report"""
     cart = request.session.get("cart", [])

@@ -44,7 +44,7 @@
         <div class="report-card">
             <h3>{{ report.title }}</h3>
             <span class="type">{{ report.get_report_type_display }}</span>
-            <p class="date"><i class="fa fa-calendar"></i> Generated: {{ report.generated_at|date:"M d, Y H:i" }}</p>
+            <div style="margin-bottom: 15px;"></div>
             <a href="{% url 'report_detail' report.id %}">View Report <i class="fa fa-arrow-right"></i></a>
         </div>
         {% empty %}
