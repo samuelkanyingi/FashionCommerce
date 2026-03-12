@@ -1160,20 +1160,50 @@ def test_payment(request, order_id):
     return redirect("cart")
 
 
+@csrf_exempt
 @require_POST
 def update_shipping(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Not authenticated"}, status=403)
     location = request.POST.get("location", "")
     address = request.POST.get("address", "")
-    order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+    landmark = request.POST.get("landmark", "")
+    email = request.POST.get("email")
+    phone_input = request.POST.get("phone")
+
+    # Find order for both logged in and guest users
+    order = None
+    if request.user.is_authenticated:
+        order = Order.objects.filter(buyer=request.user, status="PENDING").first()
+    else:
+        order_id = request.session.get("guest_order_id")
+        if order_id:
+            order = Order.objects.filter(id=order_id, status="PENDING").first()
+
     if not order:
         return JsonResponse({"error": "No pending order found"}, status=404)
-    order.location = location
-    order.address = address
-    order.delivery_fee = calculate_delivery_fee(location)
+
+    # Update order details
+    if location:
+        order.location = location
+        order.delivery_fee = calculate_delivery_fee(location)
+    if address:
+        order.address = address
+    if landmark:
+        order.landmark = landmark
+    if email:
+        order.email = email
+    if phone_input:
+        order.phone = phone_input
+        
     order.save()
-    return JsonResponse({"success": True, "delivery_fee": order.delivery_fee})
+    
+    # Sync items from session just in case
+    sync_order_items(request, order)
+    
+    return JsonResponse({
+        "status": "success", 
+        "delivery_fee": order.delivery_fee,
+        "grand_total": order.get_grand_total()
+    })
 
 
 def my_receipts(request):
