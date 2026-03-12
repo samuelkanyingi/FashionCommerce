@@ -778,6 +778,18 @@ def mpesa_callback(request):
                 order.save()
                 print(f"✓ Order {order.tracking_number} updated - Receipt: {mpesa_receipt_num}, Status: PAID")
 
+                # DECREMENT STOCK for each item in the order
+                for item in order.items.all():
+                    product = item.product
+                    if product.stock >= item.quantity:
+                        product.stock -= item.quantity
+                        product.save()
+                        print(f"  - Stock updated for {product.name}: {product.stock} left")
+                    else:
+                        print(f"  - Warning: Low stock for {product.name} ({product.stock} left), cannot decrement fully")
+                        product.stock = 0 # Empty stock
+                        product.save()
+
                 # Create platform receipt
                 try:
                     pdf_buffer = generate_receipt_pdf(order)
@@ -1176,6 +1188,7 @@ def my_receipts(request):
 def run_report_generation():
     """Helper to update or create the 5 standard reports with latest data"""
     now = datetime.datetime.now()
+    timestamp_str = now.strftime('%b %d, %I:%M:%S %p')
     
     # Pre-clean: If there are multiple reports of the same type (from previous clutter), 
     # delete them so update_or_create doesn't crash.
@@ -1184,19 +1197,22 @@ def run_report_generation():
         if existing.count() > 1:
             existing.delete()
 
-    # 1. Sales Report
+    # 1. Sales Report - Only include orders that actually have items
     paid_orders = Order.objects.filter(status="PAID").order_by("-created_at")
-    total_revenue = sum(o.get_grand_total() for o in paid_orders)
+    valid_paid_orders = [o for o in paid_orders if o.items.exists()]
+    total_revenue = sum(o.get_grand_total() for o in valid_paid_orders)
+    
     Report.objects.update_or_create(
         report_type="sales",
         defaults={
-            "title": f"Sales Summary - {now.strftime('%b %d')}",
+            "title": f"Sales Summary ({timestamp_str})",
             "data": {
-                "total_orders": paid_orders.count(),
+                "last_updated": timestamp_str,
+                "total_orders": len(valid_paid_orders),
                 "total_revenue": total_revenue,
                 "items": [
-                    {"tracking": o.tracking_number, "amount": o.get_grand_total(), "date": o.created_at.strftime("%Y-%m-%d")}
-                    for o in paid_orders[:20]
+                    {"tracking": o.tracking_number, "amount": o.get_grand_total(), "date": o.created_at.strftime("%Y-%m-%d %H:%M")}
+                    for o in valid_paid_orders[:20]
                 ],
             }
         }
@@ -1207,8 +1223,9 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="inventory",
         defaults={
-            "title": f"Stock Alert - {now.strftime('%b %d')}",
+            "title": f"Stock Alert ({timestamp_str})",
             "data": {
+                "last_updated": timestamp_str,
                 "total_products": products.count(),
                 "low_stock": products.filter(stock__lt=10).count(),
                 "items": [{"name": p.name, "stock": p.stock, "price": p.price} for p in products[:20]],
@@ -1221,8 +1238,9 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="orders",
         defaults={
-            "title": f"Order Status - {now.strftime('%b %d')}",
+            "title": f"Order Status ({timestamp_str})",
             "data": {
+                "last_updated": timestamp_str,
                 "total_orders": all_orders.count(),
                 "pending": all_orders.filter(status="PENDING").count(),
                 "paid": all_orders.filter(status="PAID").count(),
@@ -1248,8 +1266,9 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="customers",
         defaults={
-            "title": f"Customer Leaders - {now.strftime('%b %d')}",
+            "title": f"Customer Leaders ({timestamp_str})",
             "data": {
+                "last_updated": timestamp_str,
                 "total_customers": User.objects.count(),
                 "users_with_orders": customers.count(),
                 "items": [{"username": u.username, "paid": u.paid_orders, "total": u.total_orders, "email": u.email} for u in customers[:20]],
@@ -1263,8 +1282,9 @@ def run_report_generation():
     Report.objects.update_or_create(
         report_type="products",
         defaults={
-            "title": f"Top Rated Products - {now.strftime('%b %d')}",
+            "title": f"Top Rated Products ({timestamp_str})",
             "data": {
+                "last_updated": timestamp_str,
                 "items": [{"name": p.name, "rating": p.get_avg_rating(), "reviews": p.get_review_count()} for p in all_products[:20]]
             }
         }
