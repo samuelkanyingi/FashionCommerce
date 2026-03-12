@@ -221,8 +221,11 @@ def register(request):
     return render(request, "shop/register.html")
 
 
+from django.contrib.auth.forms import PasswordResetForm
+
 def login_user(request):
     if request.method == "POST":
+        # ... (rest of method) ...
         username = request.POST.get("username")
         password = request.POST.get("password")
 
@@ -250,7 +253,8 @@ def login_user(request):
                 '<div style="color:red; padding-bottom: 20px;">Invalid username</div>'
             )
 
-    return render(request, "shop/login.html")
+    form = PasswordResetForm()
+    return render(request, "shop/login.html", {"form": form})
 
 
 def women(request):
@@ -1289,9 +1293,9 @@ def run_report_generation():
 
     # 4. Customer Report
     customers = User.objects.annotate(
-        total_orders=models.Count("orders"),
-        paid_orders=models.Count("orders", filter=models.Q(orders__status="PAID"))
-    ).filter(total_orders__gt=0).order_by("-paid_orders", "-total_orders")
+        total_orders_count=models.Count("orders"),
+        paid_orders_count=models.Count("orders", filter=models.Q(orders__status="PAID"))
+    ).filter(total_orders_count__gt=0).order_by("-paid_orders_count", "-total_orders_count")
     
     Report.objects.update_or_create(
         report_type="customers",
@@ -1301,7 +1305,15 @@ def run_report_generation():
                 "last_updated": timestamp_str,
                 "total_customers": User.objects.count(),
                 "users_with_orders": customers.count(),
-                "items": [{"username": u.username, "paid": u.paid_orders, "total": u.total_orders, "email": u.email} for u in customers[:20]],
+                "items": [
+                    {
+                        "Username": u.username, 
+                        "Email": u.email,
+                        "Total Orders": u.total_orders_count,
+                        "Paid Orders": u.paid_orders_count
+                    } 
+                    for u in customers[:20]
+                ],
             }
         }
     )

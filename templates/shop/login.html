@@ -32,13 +32,12 @@
                     <label for="">Password:</label> 
                     <input type="password" placeholder="Password" name="password"> 
                 </div>
-                <button type="submit" class="login-btn">Login </button> <br> <br>
-                <a href="#"
-                 class="forgot-btn"
-                 @click.prevent="forgotOpen = true"
-                 
-                 >Forgot Password ?</a> <br> <br>
-                 <a href="{% url 'register' %}">Don't have an account?</a>
+                <button type="submit" class="login-btn">Login </button>
+                
+                <div class="auth-links">
+                    <a href="#" class="forgot-btn" @click.prevent="forgotOpen = true">Forgot Password?</a>
+                    <a href="{% url 'register' %}">Don't have an account?</a>
+                </div>
             </form>
            
             <div

@@ -1,121 +1,241 @@
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: #ececec;
-   
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f4f4f4;
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
+
 .hero-section {
     display: flex;
     justify-content: space-between;
-    margin: 5px 35px;
-    border-bottom: 1px solid #ccc;
-}
-.btn-hero {
-    background-color: #ececec;
-    border: 0;
-    border-radius: 5px;
-    padding: 10px;
-}
-.btn-hero:hover {
-    background-color: #ccc;
+    align-items: center;
+    padding: 15px 5%;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
+.hero-section p {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #04aa6d;
+    margin: 0;
+}
+
+.btn-hero {
+    background-color: #f0f0f0;
+    color: #333;
+    text-decoration: none;
+    border-radius: 5px;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    transition: background 0.3s;
+}
+
+.btn-hero:hover {
+    background-color: #e0e0e0;
+}
+
+.container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
 
 .auth-card {
     background: white;
-    width: 400px;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    margin: 50px 400px;
-    
-
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
+.auth-card h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.8rem;
+    color: #222;
+    text-align: center;
+}
 
-.form-group label {
+.auth-card p {
+    color: #666;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+/* Django Form Styling */
+.auth-card form p {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.auth-card label, .form-group label {
     display: block;
-    font-weight: bold;
-    margin-bottom: 6px; 
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
 }
 
+.auth-card input[type="text"],
+.auth-card input[type="email"],
+.auth-card input[type="password"],
 .form-group input {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
     box-sizing: border-box;
-}
-
-.login-btn {
-    background-color: black;
-    padding: 10px;
-    border: 0;
-    border-radius: 7px;
     font-size: 1rem;
-    letter-spacing: 1px;
-    color: white;
-    margin-top: 10px;
-    
-}
-a {
-    text-decoration: none;
-    color: black;
-    margin-top: 15px;
+    transition: border-color 0.3s, box-shadow 0.3s;
 }
 
+.auth-card input:focus, .form-group input:focus {
+    outline: none;
+    border-color: #04aa6d;
+    box-shadow: 0 0 0 3px rgba(4, 170, 109, 0.1);
+}
 
-.btn {
-    padding: 12px;
-    background: black;
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.login-btn, .submit-btn, .btn {
+    width: 100%;
+    background-color: #04aa6d;
     color: white;
-    border: none;
-    border-radius: 6px;
+    padding: 14px;
+    border: 0;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    margin-top: 5px;
-    align-items: center;
+    margin-top: 10px;
+    transition: background 0.3s;
 }
 
-.success {
-    color: green;
-    font-weight: bold;
-    padding: 10px;
+.login-btn:hover, .submit-btn:hover, .btn:hover {
+    background-color: #038a58;
 }
-.error {
-    color: red;
-    font-weight: bold;
-    background-color: #ffe6e6;
-    padding: 10px;
-    border-radius: 5px;
+
+.auth-links {
+    margin-top: 25px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-links a, .forgot-btn, a {
+    text-decoration: none;
+    color: #04aa6d;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.auth-links a:hover, .forgot-btn:hover, a:hover {
+    color: #038a58;
+    text-decoration: underline;
+}
+
+.success-message {
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 3rem;
+    color: #04aa6d;
     margin-bottom: 15px;
-    border: 1px solid #ffcccc;
 }
 
+.errorlist {
+    color: #d9534f;
+    list-style: none;
+    padding: 0;
+    margin: 5px 0 15px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
 
+/* Django Form Help Text */
+.helptext {
+    display: block;
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
 
+.helptext ul {
+    margin: 5px 0;
+    padding-left: 20px;
+}
 
+.django-form-container ul {
+    margin: 5px 0 15px 0;
+    padding-left: 20px;
+    color: #777;
+    font-size: 0.8rem;
+}
+
+.django-form-container li {
+    margin-bottom: 3px;
+}
+
+/* Modal Styling */
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.6);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    backdrop-filter: blur(4px);
 }
+
 .modal {
     background: white;
-    padding: 24px;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 360px;
+    padding: 40px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
     position: relative;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
 }
+
+.modal h3 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    color: #222;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
 .close-btn {
     position: absolute;
-    top: 8px;
-    right: 12px;
-    font-size: 20px;
+    top: 15px;
+    right: 15px;
+    font-size: 24px;
     border: none;
-    background: 0;
+    background: transparent;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.2s;
 }
+
+.close-btn:hover {
+    color: #333;
+}
+
+[x-cloak] { display: none !important; }
