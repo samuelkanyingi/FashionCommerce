@@ -202,18 +202,28 @@
 </nav>
 
 <!-- PROMOTIONS CAROUSEL -->
-<section class="promo-carousel" x-data="{ currentSlide: 0, slides: [
-    {img: 'banner.jpeg'},
-    {img: 'banner2.jpg'}
-]}">
-    <div class="carousel-slides">
+<section class="promo-carousel" x-data="{ 
+    currentSlide: 0, 
+    slides: [
+        {img: 'watchbanner.jpg', tag: 'Luxury Timepieces', title: 'Watch Collection', desc: 'Timeless elegance for every occasion'},
+        {img: 'shirtbanner.jpg', tag: 'Premium Quality', title: 'Classic Shirts', desc: 'Crafted for comfort and style'},
+        {img: 'handbagbanner.jpg', tag: 'Chic & Practical', title: 'Designer Handbags', desc: 'Complete your look with our latest collection'},
+        {img: 'clotheswomenbanner.jpg', tag: 'Modern Trends', title: 'Women\'s Fashion', desc: 'Discover your unique style today'}
+    ],
+    init() {
+        setInterval(() => {
+            this.currentSlide = this.currentSlide === this.slides.length - 1 ? 0 : this.currentSlide + 1;
+        }, 9000);
+    }
+}">
+    <div class="carousel-slides" :style="'transform: translateX(-' + (currentSlide * 100) + '%)'">
         <template x-for="(slide, index) in slides" :key="index">
-            <div class="carousel-slide" :class="{active: currentSlide === index}">
-                <img :src="{% static 'images/' %} + slide.img">
+            <div class="carousel-slide">
+                <img :src="'/media/products/' + slide.img">
                 <div class="carousel-caption">
-                    <p class="promo-tag" x-text="index === 0 ? 'Discover your style' : 'Up to 50% Off'"></p>
-                    <h1 x-text="index === 0 ? 'Collection 2026' : 'Mid-Season Sale'"></h1>
-                    <p x-text="index === 0 ? 'Explore our latest trends' : 'Limited time offers'"></p>
+                    <p class="promo-tag" x-text="slide.tag"></p>
+                    <h1 x-text="slide.title"></h1>
+                    <p x-text="slide.desc"></p>
                 </div>
             </div>
         </template>
