@@ -11,8 +11,47 @@
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
-        /* Dropdown Navigation */
-        .nav-links { display: flex; list-style: none; margin: 0; padding: 0; gap: 20px; }
+      /* Sidenav */
+      .sidenav {
+        height: 100%;
+        width: 0;
+        position: fixed;
+        z-index: 9999; 
+        top: 0; 
+        left: 0;
+        background-color: #111; 
+        overflow-x: hidden;
+        padding-top: 60px;
+        transition: 0.5s;
+      }
+
+      .sidenav a {
+        padding: 16px 62px;
+        text-decoration: none;
+        font-size: 25px;
+        color: #818181;
+        display: block;
+        transition: 0.3s;
+      }
+
+      .sidenav a:hover {
+        color: #f1f1f1;
+      }
+
+      .sidenav .closebtn {
+        position: absolute;
+        top: 0;
+        right: 25px;
+        font-size: 36px;
+        margin-left: 50px;
+      }
+
+      .menu-section {
+        animation: slideIn 0.4s ease-in-out;
+      }
+
+      /* Dropdown Navigation */
+      .nav-links { display: flex; list-style: none; margin: 0; padding: 0; gap: 20px; }
         .nav-links > li { position: relative; }
         .nav-links > li > a { 
             color: #333; 
@@ -445,9 +484,41 @@
 </header>
 
 <!-- NAVIGATION -->
-<nav class="main-nav">
+<nav class="main-nav" x-data="{ menuOpen: false }" x-init="$watch('menuOpen', val => val ? openNav() : closeNav())">
     <div class="nav-container">
-        <ul class="nav-links">
+        <button class="hamburger" :class="{ 'active': menuOpen }" @click="menuOpen = !menuOpen" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <div id="mySidenav" class="sidenav" x-data="{ currentMenu: 'main' }">
+            <div x-show="currentMenu === 'main'" class="menu-section">
+                <a href="{% url 'index' %}" @click="menuOpen = false">Home</a>
+                <a href="javascript:void(0)" @click="currentMenu = 'women'">Women <i class="fa fa-chevron-right"></i></a>
+                <a href="javascript:void(0)" @click="currentMenu = 'men'">Men <i class="fa fa-chevron-right"></i></a>
+                <a href="{% url 'cart' %}" @click="menuOpen = false">Cart</a>
+                {% if user.is_authenticated %}
+                <!-- <a href="{% url 'cart' %}" @click="menuOpen = false">Cart</a> -->
+                <a href="{% url 'my_receipts' %}" @click="menuOpen = false">My Receipts</a>
+                {% endif %}
+            </div>
+            <div x-show="currentMenu === 'women'" class="menu-section">
+                <a href="javascript:void(0)" @click="currentMenu = 'main'"><i class="fa fa-chevron-left"></i> Back</a>
+                <a href="{% url 'women' %}?sub=clothing" @click="menuOpen = false">Clothing</a>
+                <a href="{% url 'women' %}?sub=shoes" @click="menuOpen = false">Shoes</a>
+                <a href="{% url 'women' %}?sub=handbags" @click="menuOpen = false">Handbags</a>
+            </div>
+            <div x-show="currentMenu === 'men'" class="menu-section">
+                <a href="javascript:void(0)" @click="currentMenu = 'main'"><i class="fa fa-chevron-left"></i> Back</a>
+                <a href="{% url 'men' %}?sub=clothing" @click="menuOpen = false">Clothing</a>
+                <a href="{% url 'men' %}?sub=shoes" @click="menuOpen = false">Shoes</a>
+                <a href="{% url 'men' %}?sub=watches" @click="menuOpen = false">Watches</a>
+            </div>
+        </div>
+
+        
+        <ul class="nav-links" :class="{ 'mobile-open': menuOpen }">
             <li><a href="{% url 'index' %}">Home</a></li>
             <li class="dropdown">
                 <a href="{% url 'women' %}">Women <i class="fa fa-chevron-down"></i></a>
@@ -465,10 +536,8 @@
                     <li><a href="{% url 'men' %}?sub=watches">Watches</a></li>
                 </ul>
             </li>
-            <!-- <li><a href="{% url 'women' %}?sub=shoes&sort=high-to-low">Sale</a></li> -->
             <li><a href="{% url 'track_order' %}">Track Order</a></li>
             <li><a href="{% url 'reports' %}">Reports</a></li>
-            <!-- <li><a href="{% url 'inventory' %}">Inventory</a></li> -->
         </ul>
     </div>
 </nav>
@@ -1250,14 +1319,14 @@ function checkoutApp() {
         <div class="footer-col">
             <h3>About</h3>
             <p><a href="#">About Us</a></p>
-            <p><a href="#">Careers</a></p>
-            <p><a href="#">Store Locator</a></p>
+            <!-- <p><a href="#">Careers</a></p>
+            <p><a href="#">Store Locator</a></p> -->
         </div>
         <div class="footer-col">
             <h3>Customer Service</h3>
-            <p><a href="#">Track Order</a></p>
-            <p><a href="#">Size Guide</a></p>
-            <p><a href="#">Gift Cards</a></p>
+            <p><a href="{% url 'track_order' %}">Track Order</a></p>
+            <!-- <p><a href="#">Size Guide</a></p>
+            <p><a href="#">Gift Cards</a></p> -->
         </div>
     </div>
     <hr>
@@ -1272,5 +1341,9 @@ function checkoutApp() {
 </footer>
 
 <script src="{% static 'js/main.js' %}"></script>
+<script>
+function openNav() { document.getElementById("mySidenav").style.width = "250px"; }
+function closeNav() { document.getElementById("mySidenav").style.width = "0"; }
+</script>
 </body>
 </html>

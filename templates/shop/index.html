@@ -13,7 +13,7 @@
         height: 100%;
         width: 0;
         position: fixed;
-        z-index: 1; 
+        z-index: 9999; 
         top: 0; 
         left: 0;
         background-color: #111; 
@@ -23,7 +23,8 @@
       }
 
       .sidenav a {
-        padding: 8px 8px 8px 32px;
+        padding: 16px 62px;
+        
         text-decoration: none;
         font-size: 25px;
         color: #818181;
@@ -149,35 +150,39 @@
 </header>
 
 <!-- NAVIGATION -->
-<nav class="main-nav">
+<nav class="main-nav" x-data="{ menuOpen: false }" x-init="$watch('menuOpen', val => val ? openNav() : closeNav())">
     <div class="nav-container">
+        <button class="hamburger" :class="{ 'active': menuOpen }" @click="menuOpen = !menuOpen" aria-label="Toggle menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
         <div id="mySidenav" class="sidenav" x-data="{ currentMenu: 'main' }">
-            <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
             <div x-show="currentMenu === 'main'" class="menu-section">
-                <a href="{% url 'index' %}">Home</a>
+                <a href="{% url 'index' %}" @click="menuOpen = false">Home</a>
                 <a href="javascript:void(0)" @click="currentMenu = 'women'">Women <i class="fa fa-chevron-right"></i></a>
                 <a href="javascript:void(0)" @click="currentMenu = 'men'">Men <i class="fa fa-chevron-right"></i></a>
-                <a href="{% url 'reports' %}">Reports</a>
+                <a href="{% url 'cart' %}" @click="menuOpen = false">Cart</a>
                 {% if user.is_authenticated %}
-                <a href="{% url 'cart' %}">Cart</a>
-                <a href="{% url 'my_receipts' %}">My Receipts</a>
+                <!-- <a href="{% url 'cart' %}" @click="menuOpen = false">Cart</a> -->
+                <a href="{% url 'my_receipts' %}" @click="menuOpen = false">My Receipts</a>
                 {% endif %}
             </div>
             <div x-show="currentMenu === 'women'" class="menu-section">
                 <a href="javascript:void(0)" @click="currentMenu = 'main'"><i class="fa fa-chevron-left"></i> Back</a>
-                <a href="{% url 'women' %}?sub=clothing">Clothing</a>
-                <a href="{% url 'women' %}?sub=shoes">Shoes</a>
-                <a href="{% url 'women' %}?sub=handbags">Handbags</a>
+                <a href="{% url 'women' %}?sub=clothing" @click="menuOpen = false">Clothing</a>
+                <a href="{% url 'women' %}?sub=shoes" @click="menuOpen = false">Shoes</a>
+                <a href="{% url 'women' %}?sub=handbags" @click="menuOpen = false">Handbags</a>
             </div>
             <div x-show="currentMenu === 'men'" class="menu-section">
                 <a href="javascript:void(0)" @click="currentMenu = 'main'"><i class="fa fa-chevron-left"></i> Back</a>
-                <a href="{% url 'men' %}?sub=clothing">Clothing</a>
-                <a href="{% url 'men' %}?sub=shoes">Shoes</a>
-                <a href="{% url 'men' %}?sub=watches">Watches</a>
+                <a href="{% url 'men' %}?sub=clothing" @click="menuOpen = false">Clothing</a>
+                <a href="{% url 'men' %}?sub=shoes" @click="menuOpen = false">Shoes</a>
+                <a href="{% url 'men' %}?sub=watches" @click="menuOpen = false">Watches</a>
             </div>
         </div>
         
-        <ul class="nav-links">
+        <ul class="nav-links" :class="{ 'mobile-open': menuOpen }">
             <li><a href="{% url 'index' %}" class="active">Home</a></li>
             <li class="dropdown">
                 <a href="{% url 'women' %}">Women <i class="fa fa-chevron-down" style="font-size: 10px;"></i></a>
@@ -382,15 +387,15 @@
         <div class="footer-col">
             <h3>About</h3>
             <p><a href="#">About Us</a></p>
-            <p><a href="#">Careers</a></p>
-            <p><a href="#">Store Locator</a></p>
+            <!-- <p><a href="#">Careers</a></p>
+            <p><a href="#">Store Locator</a></p> -->
             <p><a href="#">Blog</a></p>
         </div>
         <div class="footer-col">
             <h3>Customer Service</h3>
-            <p><a href="#">Track Order</a></p>
-            <p><a href="#">Size Guide</a></p>
-            <p><a href="#">Gift Cards</a></p>
+            <p><a href="{% url 'track_order' %}">Track Order</a></p>
+            <!-- <p><a href="#">Size Guide</a></p>
+            <p><a href="#">Gift Cards</a></p> -->
             <p><a href="#">FAQ</a></p>
         </div>
     </div>
